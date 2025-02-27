@@ -40,6 +40,7 @@ const JapaneseQuiz: React.FC = () => {
   const [kunyomi, setKunyomi] = useState<string>("");
   const [meaning, setMeaning] = useState<string | null>(null);
   const [kanjiAnimation, setKanjiAnimation] = useState<string[]>([]);
+  const [kanjiVideo, setKanjiVideo] = useState<string | null>("");
   const [example, setExample] = useState<{
     japanese: string;
     meaning: string;
@@ -79,9 +80,9 @@ const JapaneseQuiz: React.FC = () => {
         .split("\n")
         .map(
           (row) =>
-            row.split(",").map((cell) => cell.replace(/^"|"$/g, "").trim()), // Remove quotes
+            row.split(",").map((cell) => cell.replace(/^"|"$/g, "").trim()),
         )
-        .filter((row) => row.length > 2 && row[1] && row[2]); // Ensure valid data
+        .filter((row) => row.length > 2 && row[1] && row[2]);
 
       if (rows.length > 1) {
         const formattedWords = rows.slice(1).map((row) => ({
@@ -193,6 +194,7 @@ const JapaneseQuiz: React.FC = () => {
       setOnyomi(data.kanji?.onyomi?.katakana || "N/A");
       setKunyomi(data.kanji?.kunyomi?.hiragana || "N/A");
       setKanjiAnimation(data.radical?.animation || []);
+      setKanjiVideo(data.kanji?.video.webm || "");
 
       const exampleData = data.examples?.[0];
       if (exampleData) {
@@ -521,6 +523,38 @@ const JapaneseQuiz: React.FC = () => {
             </Box>
           )}
 
+{kanjiVideo && kanjiVideo.length > 0 && (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                  mb: 3,
+                  p: 2,
+                  bgcolor: "#fff",
+                  borderRadius: 2,
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                {
+                  <video
+                    key={"video"}
+                    src={kanjiVideo}
+                    controls
+                    autoPlay={true}
+                    loop={true}
+                    style={{
+                      width: isMobile ? 120 : 160,
+                      height: isMobile ? 120 : 160,
+                    }}
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                }
+              </Box>
+            )}
+
           <CardContent sx={{ p: isMobile ? 2 : 4 }}>
             {showingAnswer && (
               <Box
@@ -553,6 +587,7 @@ const JapaneseQuiz: React.FC = () => {
               </Typography>
 
               {meaning && (
+                <>
                 <Typography
                   variant="h5"
                   sx={{
@@ -566,6 +601,11 @@ const JapaneseQuiz: React.FC = () => {
                 >
                   Ý nghĩa: <strong>{meaning}</strong>
                 </Typography>
+                <Typography sx={{p: 2, gap:3, display:"flex", justifyContent:"center", textAlign: "center"}} >
+                  Onyomi: <strong>{onyomi}</strong>
+                  Kunyomi: <strong>{kunyomi}</strong>
+                </Typography>
+                </>
               )}
             </Box>
 
@@ -596,6 +636,7 @@ const JapaneseQuiz: React.FC = () => {
                 ))}
               </Box>
             )}
+
 
             {example && (
               <Box
