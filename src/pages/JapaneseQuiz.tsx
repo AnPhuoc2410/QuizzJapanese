@@ -1,35 +1,30 @@
-import React, { useState, useEffect, useRef } from "react";
+import PauseIcon from "@mui/icons-material/Pause";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import SettingsIcon from "@mui/icons-material/Settings";
+import TimerIcon from "@mui/icons-material/Timer";
 import {
-  Container,
-  TextField,
-  Button,
-  Typography,
-  CardContent,
-  Input,
   Box,
+  CardContent,
+  CircularProgress,
+  Container,
+  FormControlLabel,
+  IconButton,
+  LinearProgress,
+  Paper,
+  Slider,
+  Switch,
+  TextField,
+  Tooltip,
+  Typography,
   useMediaQuery,
   useTheme,
-  Paper,
-  Switch,
-  FormControlLabel,
-  LinearProgress,
-  IconButton,
-  Slider,
-  Tooltip,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import TimerIcon from "@mui/icons-material/Timer";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import PauseIcon from "@mui/icons-material/Pause";
-import SettingsIcon from "@mui/icons-material/Settings";
-
-interface Word {
-  kanji: string;
-  hiragana: string;
-  meaning: string;
-}
+import React, { useEffect, useRef, useState } from "react";
+import NavigationButton from "../components/ButtonComponent";
+import { SETTINGS } from "../settings";
+import { Example, KanjiData, Word } from "../types";
+import { fetchKanji } from "../utils/apis";
+import { ENV } from "../utils/env";
 
 const JapaneseQuiz: React.FC = () => {
   const [words, setWords] = useState<Word[]>([]);
@@ -41,16 +36,12 @@ const JapaneseQuiz: React.FC = () => {
   const [meaning, setMeaning] = useState<string | null>(null);
   const [kanjiAnimation, setKanjiAnimation] = useState<string[]>([]);
   const [kanjiVideo, setKanjiVideo] = useState<string | null>("");
-  const [example, setExample] = useState<{
-    japanese: string;
-    meaning: string;
-    audio: string;
-  } | null>(null);
+  const [example, setExample] = useState<Example | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Timer related states
   const [timerEnabled, setTimerEnabled] = useState<boolean>(false);
-  const [timeLeft, setTimeLeft] = useState<number>(30);
+  const [timeLeft, setTimeLeft] = useState<number>(SETTINGS.TIME_LEFT);
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [timerPaused, setTimerPaused] = useState<boolean>(false);
   const [reviewTime, setReviewTime] = useState<number>(5); // Default 5 seconds review time
@@ -65,9 +56,14 @@ const JapaneseQuiz: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
+  //cached
+  const [kanjiCache, setKanjiCache] = useState<{ [key: string]: KanjiData }>(
+    {}
+  );
+
   const fetchGoogleSheet = async () => {
     setLoading(true);
-    const url = import.meta.env.VITE_API_SHEET_URL;
+    const url = ENV.API_SHEET_URL;
     if (!url) {
       throw new Error("VITE_API_SHEET environment variable is not defined");
     }
@@ -78,9 +74,8 @@ const JapaneseQuiz: React.FC = () => {
 
       const rows = text
         .split("\n")
-        .map(
-          (row) =>
-            row.split(",").map((cell) => cell.replace(/^"|"$/g, "").trim()),
+        .map((row) =>
+          row.split(",").map((cell) => cell.replace(/^"|"$/g, "").trim())
         )
         .filter((row) => row.length > 2 && row[1] && row[2]);
 
@@ -174,41 +169,50 @@ const JapaneseQuiz: React.FC = () => {
   };
 
   const fetchKanjiDetails = async (kanji: string) => {
-    const apiKey = import.meta.env.VITE_KANJI_API_KEY;
-    const apiHost = import.meta.env.VITE_KANJI_API_HOST;
-    try {
-      const response = await fetch(
-        `https://${apiHost}/api/public/kanji/${kanji}`,
-        {
-          method: "GET",
-          headers: {
-            "X-RapidAPI-Host": apiHost || "",
-            "X-RapidAPI-Key": apiKey || "",
-          },
-        },
-      );
+    if (kanjiCache[kanji]) {
+      console.log("Returning cached data for:", kanji);
+      const data = kanjiCache[kanji];
+      updateKanjiState(data);
+      return;
+    }
 
-      const data = await response.json();
+    try {
+      const data = await fetchKanji(kanji);
       console.log("Kanji API Response:", data);
 
-      setOnyomi(data.kanji?.onyomi?.katakana || "N/A");
-      setKunyomi(data.kanji?.kunyomi?.hiragana || "N/A");
-      setKanjiAnimation(data.radical?.animation || []);
-      setKanjiVideo(data.kanji?.video.webm || "");
+      // Cache the data in memory
+      setKanjiCache((prevCache) => ({
+        ...prevCache,
+        [kanji]: data,
+      }));
 
-      const exampleData = data.examples?.[0];
-      if (exampleData) {
-        setExample({
-          japanese: exampleData.japanese,
-          meaning: exampleData.meaning.english,
-          audio: exampleData.audio?.mp3 || "",
-        });
-      } else {
-        setExample(null);
-      }
+      updateKanjiState(data);
     } catch (error) {
       console.error("Error fetching Kanji details:", error);
       setKanjiAnimation([]);
+    }
+  };
+
+  const updateKanjiState = (data: KanjiData) => {
+    setOnyomi(data.kanji?.onyomi?.katakana || "N/A");
+    setKunyomi(data.kanji?.kunyomi?.hiragana || "N/A");
+    setKanjiAnimation(data.radical?.animation || []);
+    setKanjiVideo(data.kanji?.video.webm || "");
+
+    const exampleData = data.examples?.[0];
+    if (exampleData) {
+      setExample({
+        japanese: exampleData.japanese,
+        meaning: exampleData.meaning,
+        audio: {
+          opus: exampleData.audio?.opus || "",
+          aac: exampleData.audio?.aac || "",
+          ogg: exampleData.audio?.ogg || "",
+          mp3: exampleData.audio?.mp3 || "",
+        },
+      });
+    } else {
+      setExample(null);
     }
   };
 
@@ -245,9 +249,10 @@ const JapaneseQuiz: React.FC = () => {
     setKunyomi("");
     setKanjiAnimation([]);
     setExample(null);
+    setKanjiVideo("");
 
     // Reset timer
-    setTimeLeft(30);
+    setTimeLeft(SETTINGS.TIME_LEFT);
     if (timerEnabled) {
       setTimerActive(true);
       setTimerPaused(false);
@@ -266,9 +271,10 @@ const JapaneseQuiz: React.FC = () => {
     setKunyomi("");
     setKanjiAnimation([]);
     setExample(null);
+    setKanjiVideo("");
 
     // Reset timer and cancel any review period
-    setTimeLeft(30);
+    setTimeLeft(SETTINGS.TIME_LEFT);
     setShowingAnswer(false);
     if (timerEnabled) {
       setTimerActive(true);
@@ -290,7 +296,7 @@ const JapaneseQuiz: React.FC = () => {
     setTimerEnabled((prev) => !prev);
     if (!timerEnabled) {
       // Turning timer on
-      setTimeLeft(30);
+      setTimeLeft(SETTINGS.TIME_LEFT);
       setTimerActive(true);
       setTimerPaused(false);
     } else {
@@ -312,13 +318,13 @@ const JapaneseQuiz: React.FC = () => {
 
   const handleReviewTimeChange = (
     _event: Event,
-    newValue: number | number[],
+    newValue: number | number[]
   ) => {
     setReviewTime(newValue as number);
   };
 
   // Calculate progress for the progress bar
-  const timerProgress = (timeLeft / 30) * 100;
+  const timerProgress = (timeLeft / SETTINGS.TIME_LEFT) * 100;
   const reviewProgress = (reviewCountdown / reviewTime) * 100;
 
   return (
@@ -333,24 +339,17 @@ const JapaneseQuiz: React.FC = () => {
         justifyContent: "center",
       }}
     >
-      <Typography
-        variant="h3"
-        component="h1"
-        gutterBottom
-        sx={{
-          textAlign: "center",
-          fontWeight: "bold",
-          fontSize: isMobile ? "2rem" : "2.5rem",
-          mb: 4,
-        }}
-      >
-        Japanese Kanji Quiz
-      </Typography>
-
       {loading ? (
-        <Typography variant="h5" textAlign="center">
-          Loading quiz data...
-        </Typography>
+        <Container
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+          }}
+        >
+          <CircularProgress />
+        </Container>
       ) : words.length > 0 ? (
         <Paper
           elevation={6}
@@ -523,37 +522,37 @@ const JapaneseQuiz: React.FC = () => {
             </Box>
           )}
 
-{kanjiVideo && kanjiVideo.length > 0 && (
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: "10px",
-                  flexWrap: "wrap",
-                  mb: 3,
-                  p: 2,
-                  bgcolor: "#fff",
-                  borderRadius: 2,
-                  border: "1px solid #e0e0e0",
-                }}
-              >
-                {
-                  <video
-                    key={"video"}
-                    src={kanjiVideo}
-                    controls
-                    autoPlay={true}
-                    loop={true}
-                    style={{
-                      width: isMobile ? 120 : 160,
-                      height: isMobile ? 120 : 160,
-                    }}
-                  >
-                    Your browser does not support the video tag.
-                  </video>
-                }
-              </Box>
-            )}
+          {kanjiVideo && kanjiVideo.length > 0 && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                gap: "10px",
+                flexWrap: "wrap",
+                mb: 3,
+                p: 2,
+                bgcolor: "#fff",
+                borderRadius: 2,
+                border: "1px solid #e0e0e0",
+              }}
+            >
+              {
+                <video
+                  key={"video"}
+                  src={kanjiVideo}
+                  controls
+                  autoPlay={true}
+                  loop={true}
+                  style={{
+                    width: isMobile ? 120 : 160,
+                    height: isMobile ? 120 : 160,
+                  }}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              }
+            </Box>
+          )}
 
           <CardContent sx={{ p: isMobile ? 2 : 4 }}>
             {showingAnswer && (
@@ -588,23 +587,31 @@ const JapaneseQuiz: React.FC = () => {
 
               {meaning && (
                 <>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    textAlign: "center",
-                    mb: 2,
-                    fontWeight: "medium",
-                    bgcolor: "#f9f9f9",
-                    p: 2,
-                    borderRadius: 2,
-                  }}
-                >
-                  Ý nghĩa: <strong>{meaning}</strong>
-                </Typography>
-                <Typography sx={{p: 2, gap:3, display:"flex", justifyContent:"center", textAlign: "center"}} >
-                  Onyomi: <strong>{onyomi}</strong>
-                  Kunyomi: <strong>{kunyomi}</strong>
-                </Typography>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      textAlign: "center",
+                      mb: 2,
+                      fontWeight: "medium",
+                      bgcolor: "#f9f9f9",
+                      p: 2,
+                      borderRadius: 2,
+                    }}
+                  >
+                    Ý nghĩa: <strong>{meaning}</strong>
+                  </Typography>
+                  <Typography
+                    sx={{
+                      p: 2,
+                      gap: 3,
+                      display: "flex",
+                      justifyContent: "center",
+                      textAlign: "center",
+                    }}
+                  >
+                    Onyomi: <strong>{onyomi}</strong>
+                    Kunyomi: <strong>{kunyomi}</strong>
+                  </Typography>
                 </>
               )}
             </Box>
@@ -637,7 +644,6 @@ const JapaneseQuiz: React.FC = () => {
               </Box>
             )}
 
-
             {example && (
               <Box
                 sx={{
@@ -652,14 +658,15 @@ const JapaneseQuiz: React.FC = () => {
                   Ví dụ:
                 </Typography>
                 <Typography variant="body1" sx={{ fontSize: "1.1rem", mb: 1 }}>
-                  <strong>{example.japanese}</strong> ({example.meaning})
+                  <strong>{example.japanese}</strong> ({example.meaning.english}
+                  )
                 </Typography>
                 {example.audio && (
                   <Box
                     sx={{ display: "flex", justifyContent: "center", mt: 1 }}
                   >
                     <audio controls style={{ width: "100%" }}>
-                      <source src={example.audio} type="audio/mpeg" />
+                      <source src={example.audio.mp3} type="audio/mpeg" />
                       Your browser does not support the audio element.
                     </audio>
                   </Box>
@@ -711,54 +718,24 @@ const JapaneseQuiz: React.FC = () => {
                 flexDirection: isMobile ? "column" : "row",
               }}
             >
-              <Button
-                variant="outlined"
-                size="large"
-                startIcon={<ArrowBackIcon />}
+              <NavigationButton
+                type="prev"
                 onClick={prevWord}
-                fullWidth={isMobile}
-                sx={{
-                  py: 1.5,
-                  fontSize: "1rem",
-                  borderRadius: 2,
-                }}
-              >
-                Từ trước đó
-              </Button>
+                isMobile={isMobile}
+              />
 
-              <Button
-                variant="contained"
-                size="large"
-                color="primary"
-                endIcon={<CheckCircleIcon />}
+              <NavigationButton
+                type="check"
                 onClick={checkAnswer}
                 disabled={timeLeft === 0 || showingAnswer}
-                fullWidth={isMobile}
-                sx={{
-                  py: 1.5,
-                  fontSize: "1rem",
-                  fontWeight: "bold",
-                  borderRadius: 2,
-                }}
-              >
-                Kiểm tra
-              </Button>
+                isMobile={isMobile}
+              />
 
-              <Button
-                variant="outlined"
-                size="large"
-                color="secondary"
-                endIcon={<ArrowForwardIcon />}
+              <NavigationButton
+                type="next"
                 onClick={nextWord}
-                fullWidth={isMobile}
-                sx={{
-                  py: 1.5,
-                  fontSize: "1rem",
-                  borderRadius: 2,
-                }}
-              >
-                Từ tiếp theo
-              </Button>
+                isMobile={isMobile}
+              />
             </Box>
           </CardContent>
         </Paper>
