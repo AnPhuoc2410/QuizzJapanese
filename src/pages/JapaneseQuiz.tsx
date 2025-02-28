@@ -565,7 +565,7 @@ const JapaneseQuiz: React.FC = () => {
                 variant="h1"
                 sx={{
                   textAlign: "center",
-                  fontSize: isMobile ? "5rem" : "7rem",
+                  fontSize: isMobile ? "2rem" : "7rem",
                   lineHeight: 1.2,
                   mb: 3,
                 }}
