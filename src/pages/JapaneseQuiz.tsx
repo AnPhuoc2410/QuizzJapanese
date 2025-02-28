@@ -20,11 +20,13 @@ import {
   useTheme,
 } from "@mui/material";
 import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router";
 import NavigationButton from "../components/ButtonComponent";
+import { ENV } from "../envs";
 import { SETTINGS } from "../settings";
 import { Example, KanjiData, Word } from "../types";
-import { fetchKanji } from "../utils/apis";
-import { ENV } from "../utils/env";
+import { shuffle, fetchKanji, fetchListWordInSheet } from "../utils";
+import { useQuery } from "@tanstack/react-query";
 
 const JapaneseQuiz: React.FC = () => {
   const [words, setWords] = useState<Word[]>([]);
@@ -37,14 +39,17 @@ const JapaneseQuiz: React.FC = () => {
   const [kanjiAnimation, setKanjiAnimation] = useState<string[]>([]);
   const [kanjiVideo, setKanjiVideo] = useState<string | null>("");
   const [example, setExample] = useState<Example | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
 
   // Timer related states
   const [timerEnabled, setTimerEnabled] = useState<boolean>(false);
-  const [timeLeft, setTimeLeft] = useState<number>(SETTINGS.TIME_LEFT);
+  const [timeLeft, setTimeLeft] = useState<number>(
+    SETTINGS.COUNTDOWN_TIME_LEFT
+  );
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [timerPaused, setTimerPaused] = useState<boolean>(false);
-  const [reviewTime, setReviewTime] = useState<number>(5); // Default 5 seconds review time
+  const [reviewTime, setReviewTime] = useState<number>(
+    SETTINGS.REVIEW_TIME_EACH_QUESTION
+  ); // Default 5 seconds review time
   const [showingAnswer, setShowingAnswer] = useState<boolean>(false);
   const [reviewCountdown, setReviewCountdown] = useState<number>(0);
 
@@ -57,57 +62,29 @@ const JapaneseQuiz: React.FC = () => {
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
   //cached
+
   const [kanjiCache, setKanjiCache] = useState<{ [key: string]: KanjiData }>(
     {}
   );
 
-  const fetchGoogleSheet = async () => {
-    setLoading(true);
-    const url = ENV.API_SHEET_URL;
-    if (!url) {
-      throw new Error("VITE_API_SHEET environment variable is not defined");
-    }
+  //shuffle setting
+  const location = useLocation();
+  const { isShuffle } = location.state || { shuffle: false }; // Default to false if no state is passed
 
-    try {
-      const response = await fetch(url);
-      const text = await response.text();
-
-      const rows = text
-        .split("\n")
-        .map((row) =>
-          row.split(",").map((cell) => cell.replace(/^"|"$/g, "").trim())
-        )
-        .filter((row) => row.length > 2 && row[1] && row[2]);
-
-      if (rows.length > 1) {
-        const formattedWords = rows.slice(1).map((row) => ({
-          kanji: row[1],
-          hiragana: row[2],
-          meaning: row[3] || "N/A",
-        }));
-
-        setWords(formattedWords);
-      } else {
-        console.error("No valid data found in Google Sheet");
-      }
-    } catch (error) {
-      console.error("Error fetching Google Sheet:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading, isError, error, isFetching } = useQuery({
+    queryKey: ["words", ENV.API_SHEET_URL],
+    queryFn: fetchListWordInSheet,
+  });
 
   useEffect(() => {
-    fetchGoogleSheet();
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
+    if (data && data.length > 0) {
+      const wordsToUse = [...data];
+      if (isShuffle) {
+        shuffle(wordsToUse);
       }
-      if (reviewTimerRef.current) {
-        clearInterval(reviewTimerRef.current);
-      }
-    };
-  }, []);
+      setWords(wordsToUse);
+    }
+  }, [data, isShuffle]);
 
   // Handle timer logic
   useEffect(() => {
@@ -217,28 +194,31 @@ const JapaneseQuiz: React.FC = () => {
   };
 
   const checkAnswer = () => {
-    if (words.length === 0) return;
+    if (!words || words.length === 0) return;
     answerChecked.current = true;
 
     if (timerEnabled) {
       setTimerActive(false);
     }
 
-    if (input.trim() === words[index].hiragana) {
+    const currentWord = words[index];
+    if (!currentWord) return;
+
+    if (input.trim() === currentWord.hiragana) {
       setMessage("✅ Đúng!");
     } else {
-      setMessage(`❌ Sai! Đáp án: ${words[index].hiragana}`);
+      setMessage(`❌ Sai! Đáp án: ${currentWord.hiragana}`);
     }
 
     // Show meaning after checking
-    setMeaning(words[index].meaning);
+    setMeaning(currentWord.meaning);
 
     // Fetch Kanji details
-    fetchKanjiDetails(words[index].kanji);
+    fetchKanjiDetails(currentWord.kanji);
   };
 
   const nextWord = () => {
-    if (words.length === 0) return;
+    if (!words || words.length === 0) return;
     answerChecked.current = false;
 
     setIndex((prev) => (prev + 1) % words.length);
@@ -252,7 +232,7 @@ const JapaneseQuiz: React.FC = () => {
     setKanjiVideo("");
 
     // Reset timer
-    setTimeLeft(SETTINGS.TIME_LEFT);
+    setTimeLeft(SETTINGS.COUNTDOWN_TIME_LEFT);
     if (timerEnabled) {
       setTimerActive(true);
       setTimerPaused(false);
@@ -260,7 +240,7 @@ const JapaneseQuiz: React.FC = () => {
   };
 
   const prevWord = () => {
-    if (words.length === 0) return;
+    if (!words || words.length === 0) return;
     answerChecked.current = false;
 
     setIndex((prev) => (prev - 1 + words.length) % words.length);
@@ -274,7 +254,7 @@ const JapaneseQuiz: React.FC = () => {
     setKanjiVideo("");
 
     // Reset timer and cancel any review period
-    setTimeLeft(SETTINGS.TIME_LEFT);
+    setTimeLeft(SETTINGS.COUNTDOWN_TIME_LEFT);
     setShowingAnswer(false);
     if (timerEnabled) {
       setTimerActive(true);
@@ -296,7 +276,7 @@ const JapaneseQuiz: React.FC = () => {
     setTimerEnabled((prev) => !prev);
     if (!timerEnabled) {
       // Turning timer on
-      setTimeLeft(SETTINGS.TIME_LEFT);
+      setTimeLeft(SETTINGS.COUNTDOWN_TIME_LEFT);
       setTimerActive(true);
       setTimerPaused(false);
     } else {
@@ -324,7 +304,7 @@ const JapaneseQuiz: React.FC = () => {
   };
 
   // Calculate progress for the progress bar
-  const timerProgress = (timeLeft / SETTINGS.TIME_LEFT) * 100;
+  const timerProgress = (timeLeft / SETTINGS.COUNTDOWN_TIME_LEFT) * 100;
   const reviewProgress = (reviewCountdown / reviewTime) * 100;
 
   return (
@@ -339,7 +319,11 @@ const JapaneseQuiz: React.FC = () => {
         justifyContent: "center",
       }}
     >
-      {loading ? (
+      {isError ? (
+        <Typography color="error" textAlign="center">
+          Error: {error?.message || "Failed to load words"}
+        </Typography>
+      ) : isLoading || isFetching ? (
         <Container
           sx={{
             display: "flex",
@@ -350,7 +334,11 @@ const JapaneseQuiz: React.FC = () => {
         >
           <CircularProgress />
         </Container>
-      ) : words.length > 0 ? (
+      ) : !data || data.length === 0 || !words || words.length === 0 ? (
+        <Typography variant="h5" textAlign="center">
+          No words found. Please check your data source.
+        </Typography>
+      ) : (
         <Paper
           elevation={6}
           sx={{
@@ -372,7 +360,7 @@ const JapaneseQuiz: React.FC = () => {
             }}
           >
             <Typography variant="subtitle1">
-              Card {index + 1} of {words.length}
+              Thẻ {index + 1} trong {words.length}
             </Typography>
 
             <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -387,7 +375,7 @@ const JapaneseQuiz: React.FC = () => {
                 label={
                   <Box sx={{ display: "flex", alignItems: "center" }}>
                     <TimerIcon sx={{ mr: 0.5 }} />
-                    <Typography variant="body1">Countdown Timer</Typography>
+                    <Typography variant="body1">Đếm ngược thời gian</Typography>
                   </Box>
                 }
                 labelPlacement="start"
@@ -739,10 +727,6 @@ const JapaneseQuiz: React.FC = () => {
             </Box>
           </CardContent>
         </Paper>
-      ) : (
-        <Typography variant="h5" textAlign="center">
-          No words found. Please check your data source.
-        </Typography>
       )}
     </Container>
   );
