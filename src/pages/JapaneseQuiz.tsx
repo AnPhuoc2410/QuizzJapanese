@@ -62,6 +62,7 @@ const JapaneseQuiz: React.FC = () => {
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
   //cached
+
   const [kanjiCache, setKanjiCache] = useState<{ [key: string]: KanjiData }>(
     {}
   );
@@ -70,13 +71,13 @@ const JapaneseQuiz: React.FC = () => {
   const location = useLocation();
   const { isShuffle } = location.state || { shuffle: false }; // Default to false if no state is passed
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, isFetching } = useQuery({
     queryKey: ["words", ENV.API_SHEET_URL],
     queryFn: fetchListWordInSheet,
   });
 
   useEffect(() => {
-    if (data) {
+    if (data && data.length > 0) {
       const wordsToUse = [...data];
       if (isShuffle) {
         shuffle(wordsToUse);
@@ -193,28 +194,31 @@ const JapaneseQuiz: React.FC = () => {
   };
 
   const checkAnswer = () => {
-    if (words.length === 0) return;
+    if (!words || words.length === 0) return;
     answerChecked.current = true;
 
     if (timerEnabled) {
       setTimerActive(false);
     }
 
-    if (input.trim() === words[index].hiragana) {
+    const currentWord = words[index];
+    if (!currentWord) return;
+
+    if (input.trim() === currentWord.hiragana) {
       setMessage("✅ Đúng!");
     } else {
-      setMessage(`❌ Sai! Đáp án: ${words[index].hiragana}`);
+      setMessage(`❌ Sai! Đáp án: ${currentWord.hiragana}`);
     }
 
     // Show meaning after checking
-    setMeaning(words[index].meaning);
+    setMeaning(currentWord.meaning);
 
     // Fetch Kanji details
-    fetchKanjiDetails(words[index].kanji);
+    fetchKanjiDetails(currentWord.kanji);
   };
 
   const nextWord = () => {
-    if (words.length === 0) return;
+    if (!words || words.length === 0) return;
     answerChecked.current = false;
 
     setIndex((prev) => (prev + 1) % words.length);
@@ -236,7 +240,7 @@ const JapaneseQuiz: React.FC = () => {
   };
 
   const prevWord = () => {
-    if (words.length === 0) return;
+    if (!words || words.length === 0) return;
     answerChecked.current = false;
 
     setIndex((prev) => (prev - 1 + words.length) % words.length);
@@ -315,7 +319,11 @@ const JapaneseQuiz: React.FC = () => {
         justifyContent: "center",
       }}
     >
-      {isLoading ? (
+      {isError ? (
+        <Typography color="error" textAlign="center">
+          Error: {error?.message || "Failed to load words"}
+        </Typography>
+      ) : isLoading || isFetching ? (
         <Container
           sx={{
             display: "flex",
@@ -326,7 +334,11 @@ const JapaneseQuiz: React.FC = () => {
         >
           <CircularProgress />
         </Container>
-      ) : words.length > 0 ? (
+      ) : !data || data.length === 0 || !words || words.length === 0 ? (
+        <Typography variant="h5" textAlign="center">
+          No words found. Please check your data source.
+        </Typography>
+      ) : (
         <Paper
           elevation={6}
           sx={{
@@ -348,7 +360,7 @@ const JapaneseQuiz: React.FC = () => {
             }}
           >
             <Typography variant="subtitle1">
-              Card {index + 1} of {words.length}
+              Thẻ {index + 1} trong {words.length}
             </Typography>
 
             <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -363,7 +375,7 @@ const JapaneseQuiz: React.FC = () => {
                 label={
                   <Box sx={{ display: "flex", alignItems: "center" }}>
                     <TimerIcon sx={{ mr: 0.5 }} />
-                    <Typography variant="body1">Countdown Timer</Typography>
+                    <Typography variant="body1">Đếm ngược thời gian</Typography>
                   </Box>
                 }
                 labelPlacement="start"
@@ -715,10 +727,6 @@ const JapaneseQuiz: React.FC = () => {
             </Box>
           </CardContent>
         </Paper>
-      ) : (
-        <Typography variant="h5" textAlign="center">
-          No words found. Please check your data source.
-        </Typography>
       )}
     </Container>
   );
