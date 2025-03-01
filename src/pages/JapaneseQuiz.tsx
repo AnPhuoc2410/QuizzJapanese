@@ -1,7 +1,6 @@
-import PauseIcon from "@mui/icons-material/Pause";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import SettingsIcon from "@mui/icons-material/Settings";
-import TimerIcon from "@mui/icons-material/Timer";
+import React, { useEffect, useReducer, useRef, useState, useCallback } from "react";
+import { useLocation } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   Box,
   CardContent,
@@ -19,40 +18,40 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import React, { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router";
+import PauseIcon from "@mui/icons-material/Pause";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import SettingsIcon from "@mui/icons-material/Settings";
+import TimerIcon from "@mui/icons-material/Timer";
 import NavigationButton from "../components/ButtonComponent";
+import KanjiDetails from "../components/KanjiDetails";
 import { ENV } from "../envs";
 import { SETTINGS } from "../settings";
-import { Example, KanjiData, Word } from "../types";
+import { KanjiData, Word } from "../types";
 import { shuffle, fetchKanji, fetchListWordInSheet } from "../utils";
-import { useQuery } from "@tanstack/react-query";
+import { quizReducer, QuizState } from "../types/state";
 
 const JapaneseQuiz: React.FC = () => {
+  const initialState: QuizState = {
+    index: 0,
+    input: "",
+    message: "",
+    meaning: null,
+    onyomi: "",
+    kunyomi: "",
+    kanjiAnimation: [],
+    kanjiVideo: null,
+    example: null,
+    timerEnabled: false,
+    timeLeft: SETTINGS.COUNTDOWN_TIME_LEFT,
+    timerActive: false,
+    timerPaused: false,
+    reviewTime: SETTINGS.REVIEW_TIME_EACH_QUESTION,
+    showingAnswer: false,
+    reviewCountdown: 0,
+  };
+
+  const [state, dispatch] = useReducer(quizReducer, initialState);
   const [words, setWords] = useState<Word[]>([]);
-  const [index, setIndex] = useState<number>(0);
-  const [input, setInput] = useState<string>("");
-  const [message, setMessage] = useState<string>("");
-  const [onyomi, setOnyomi] = useState<string>("");
-  const [kunyomi, setKunyomi] = useState<string>("");
-  const [meaning, setMeaning] = useState<string | null>(null);
-  const [kanjiAnimation, setKanjiAnimation] = useState<string[]>([]);
-  const [kanjiVideo, setKanjiVideo] = useState<string | null>("");
-  const [example, setExample] = useState<Example | null>(null);
-
-  // Timer related states
-  const [timerEnabled, setTimerEnabled] = useState<boolean>(false);
-  const [timeLeft, setTimeLeft] = useState<number>(
-    SETTINGS.COUNTDOWN_TIME_LEFT
-  );
-  const [timerActive, setTimerActive] = useState<boolean>(false);
-  const [timerPaused, setTimerPaused] = useState<boolean>(false);
-  const [reviewTime, setReviewTime] = useState<number>(
-    SETTINGS.REVIEW_TIME_EACH_QUESTION
-  ); // Default 5 seconds review time
-  const [showingAnswer, setShowingAnswer] = useState<boolean>(false);
-  const [reviewCountdown, setReviewCountdown] = useState<number>(0);
-
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const reviewTimerRef = useRef<NodeJS.Timeout | null>(null);
   const answerChecked = useRef<boolean>(false);
@@ -61,15 +60,12 @@ const JapaneseQuiz: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
-  //cached
+  // Cache for Kanji API responses
+  const [kanjiCache, setKanjiCache] = useState<{ [key: string]: KanjiData }>({});
 
-  const [kanjiCache, setKanjiCache] = useState<{ [key: string]: KanjiData }>(
-    {}
-  );
-
-  //shuffle setting
+  // Handle shuffle setting from location state
   const location = useLocation();
-  const { isShuffle } = location.state || { shuffle: false }; // Default to false if no state is passed
+  const { isShuffle } = location.state || { isShuffle: false };
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
     queryKey: ["words", ENV.API_SHEET_URL],
@@ -86,227 +82,171 @@ const JapaneseQuiz: React.FC = () => {
     }
   }, [data, isShuffle]);
 
-  // Handle timer logic
   useEffect(() => {
-    if (timerEnabled && timerActive && !timerPaused && !showingAnswer) {
+    if (state.timerEnabled && state.timerActive && !state.timerPaused && !state.showingAnswer) {
       timerRef.current = setInterval(() => {
-        setTimeLeft((prevTime) => {
-          if (prevTime <= 1) {
-            // Time's up, check answer and start review period
-            if (!answerChecked.current) {
-              checkAnswer();
-            }
-            startReviewPeriod();
-            clearInterval(timerRef.current as NodeJS.Timeout);
-            return 0;
+        dispatch({ type: "UPDATE_TIMER", payload: state.timeLeft - 1 });
+        if (state.timeLeft <= 1) {
+          if (!answerChecked.current) {
+            checkAnswer();
           }
-          return prevTime - 1;
-        });
+          startReviewPeriod();
+          clearInterval(timerRef.current as NodeJS.Timeout);
+        }
       }, 1000);
     } else if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [timerEnabled, timerActive, timerPaused, showingAnswer]);
+  }, [state.timerEnabled, state.timerActive, state.timerPaused, state.showingAnswer, state.timeLeft]);
 
-  // Handle review period countdown
   useEffect(() => {
-    if (showingAnswer) {
-      setReviewCountdown(reviewTime);
+    if (state.showingAnswer) {
+      dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: state.reviewTime });
       reviewTimerRef.current = setInterval(() => {
-        setReviewCountdown((prevTime) => {
-          if (prevTime <= 1) {
-            // Review time over, move to next question
-            clearInterval(reviewTimerRef.current as NodeJS.Timeout);
-            setShowingAnswer(false);
-            nextWord();
-            return 0;
-          }
-          return prevTime - 1;
-        });
+        dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: state.reviewCountdown - 1 });
+        if (state.reviewCountdown <= 1) {
+          clearInterval(reviewTimerRef.current as NodeJS.Timeout);
+          dispatch({ type: "SET_SHOWING_ANSWER", payload: false });
+          nextWord();
+        }
       }, 1000);
     } else if (reviewTimerRef.current) {
       clearInterval(reviewTimerRef.current);
     }
-
     return () => {
-      if (reviewTimerRef.current) {
-        clearInterval(reviewTimerRef.current);
-      }
+      if (reviewTimerRef.current) clearInterval(reviewTimerRef.current);
     };
-  }, [showingAnswer]);
+  }, [state.showingAnswer, state.reviewCountdown, state.reviewTime]);
 
-  const startReviewPeriod = () => {
-    setShowingAnswer(true);
-  };
+  const startReviewPeriod = useCallback(() => {
+    dispatch({ type: "SET_SHOWING_ANSWER", payload: true });
+  }, []);
 
-  const fetchKanjiDetails = async (kanji: string) => {
+  const fetchKanjiDetails = useCallback(async (kanji: string) => {
     if (kanjiCache[kanji]) {
       console.log("Returning cached data for:", kanji);
-      const data = kanjiCache[kanji];
-      updateKanjiState(data);
+      updateKanjiState(kanjiCache[kanji]);
       return;
     }
-
     try {
       const data = await fetchKanji(kanji);
       console.log("Kanji API Response:", data);
-
-      // Cache the data in memory
-      setKanjiCache((prevCache) => ({
-        ...prevCache,
-        [kanji]: data,
-      }));
-
+      setKanjiCache((prev) => ({ ...prev, [kanji]: data }));
       updateKanjiState(data);
     } catch (error) {
       console.error("Error fetching Kanji details:", error);
-      setKanjiAnimation([]);
-    }
-  };
-
-  const updateKanjiState = (data: KanjiData) => {
-    setOnyomi(data.kanji?.onyomi?.katakana || "N/A");
-    setKunyomi(data.kanji?.kunyomi?.hiragana || "N/A");
-    setKanjiAnimation(data.radical?.animation || []);
-    setKanjiVideo(data.kanji?.video.webm || "");
-
-    const exampleData = data.examples?.[0];
-    if (exampleData) {
-      setExample({
-        japanese: exampleData.japanese,
-        meaning: exampleData.meaning,
-        audio: {
-          opus: exampleData.audio?.opus || "",
-          aac: exampleData.audio?.aac || "",
-          ogg: exampleData.audio?.ogg || "",
-          mp3: exampleData.audio?.mp3 || "",
+      dispatch({
+        type: "SET_KANJI_DETAILS",
+        payload: {
+          onyomi: "",
+          kunyomi: "",
+          kanjiAnimation: [],
+          kanjiVideo: null,
+          example: null,
         },
       });
-    } else {
-      setExample(null);
     }
-  };
+  }, [kanjiCache]);
 
-  const checkAnswer = () => {
+  const updateKanjiState = useCallback((data: KanjiData) => {
+    dispatch({
+      type: "SET_KANJI_DETAILS",
+      payload: {
+        onyomi: data.kanji?.onyomi?.katakana || "N/A",
+        kunyomi: data.kanji?.kunyomi?.hiragana || "N/A",
+        kanjiAnimation: data.radical?.animation || [],
+        kanjiVideo: data.kanji?.video.webm || null,
+        example: data.examples && data.examples[0]
+          ? {
+              japanese: data.examples[0].japanese,
+              meaning: data.examples[0].meaning,
+              audio: {
+                opus: data.examples[0].audio?.opus || "",
+                aac: data.examples[0].audio?.aac || "",
+                ogg: data.examples[0].audio?.ogg || "",
+                mp3: data.examples[0].audio?.mp3 || "",
+              },
+            }
+          : null,
+      },
+    });
+  }, []);
+
+  const checkAnswer = useCallback(() => {
     if (!words || words.length === 0) return;
     answerChecked.current = true;
-
-    if (timerEnabled) {
-      setTimerActive(false);
-    }
-
-    const currentWord = words[index];
+    dispatch({ type: "SET_TIMER_ACTIVE", payload: false });
+    const currentWord = words[state.index];
     if (!currentWord) return;
-
-    if (input.trim() === currentWord.hiragana) {
-      setMessage("✅ Đúng!");
+    if (state.input.trim() === currentWord.hiragana) {
+      dispatch({ type: "SET_MESSAGE", payload: "✅ Đúng!" });
     } else {
-      setMessage(`❌ Sai! Đáp án: ${currentWord.hiragana}`);
+      dispatch({ type: "SET_MESSAGE", payload: `❌ Sai! Đáp án: ${currentWord.hiragana}` });
     }
-
-    // Show meaning after checking
-    setMeaning(currentWord.meaning);
-
-    // Fetch Kanji details
+    dispatch({ type: "SET_MEANING", payload: currentWord.meaning });
     fetchKanjiDetails(currentWord.kanji);
-  };
+  }, [words, state.index, state.input, fetchKanjiDetails]);
 
-  const nextWord = () => {
+  const nextWord = useCallback(() => {
     if (!words || words.length === 0) return;
     answerChecked.current = false;
-
-    setIndex((prev) => (prev + 1) % words.length);
-    setInput("");
-    setMessage("");
-    setMeaning(null);
-    setOnyomi("");
-    setKunyomi("");
-    setKanjiAnimation([]);
-    setExample(null);
-    setKanjiVideo("");
-
-    // Reset timer
-    setTimeLeft(SETTINGS.COUNTDOWN_TIME_LEFT);
-    if (timerEnabled) {
-      setTimerActive(true);
-      setTimerPaused(false);
+    dispatch({ type: "NEXT_WORD", payload: words.length });
+    if (state.timerEnabled) {
+      dispatch({ type: "SET_TIMER_ACTIVE", payload: true });
+      dispatch({ type: "SET_TIMER_PAUSED", payload: false });
     }
-  };
+  }, [words, state.timerEnabled]);
 
-  const prevWord = () => {
+  const prevWord = useCallback(() => {
     if (!words || words.length === 0) return;
     answerChecked.current = false;
-
-    setIndex((prev) => (prev - 1 + words.length) % words.length);
-    setInput("");
-    setMessage("");
-    setMeaning(null);
-    setOnyomi("");
-    setKunyomi("");
-    setKanjiAnimation([]);
-    setExample(null);
-    setKanjiVideo("");
-
-    // Reset timer and cancel any review period
-    setTimeLeft(SETTINGS.COUNTDOWN_TIME_LEFT);
-    setShowingAnswer(false);
-    if (timerEnabled) {
-      setTimerActive(true);
-      setTimerPaused(false);
+    dispatch({ type: "PREV_WORD", payload: words.length });
+    dispatch({ type: "SET_SHOWING_ANSWER", payload: false });
+    if (state.timerEnabled) {
+      dispatch({ type: "SET_TIMER_ACTIVE", payload: true });
+      dispatch({ type: "SET_TIMER_PAUSED", payload: false });
     }
-
-    if (reviewTimerRef.current) {
-      clearInterval(reviewTimerRef.current);
-    }
-  };
+    if (reviewTimerRef.current) clearInterval(reviewTimerRef.current);
+  }, [words, state.timerEnabled]);
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
-    if (event.key === "Enter" && !showingAnswer) {
+    if (event.key === "Enter" && !state.showingAnswer) {
       checkAnswer();
     }
   };
 
-  const toggleTimer = () => {
-    setTimerEnabled((prev) => !prev);
-    if (!timerEnabled) {
-      // Turning timer on
-      setTimeLeft(SETTINGS.COUNTDOWN_TIME_LEFT);
-      setTimerActive(true);
-      setTimerPaused(false);
+  const toggleTimer = useCallback(() => {
+    dispatch({ type: "TOGGLE_TIMER", payload: !state.timerEnabled });
+    if (!state.timerEnabled) {
+      dispatch({ type: "UPDATE_TIMER", payload: SETTINGS.COUNTDOWN_TIME_LEFT });
+      dispatch({ type: "SET_TIMER_ACTIVE", payload: true });
+      dispatch({ type: "SET_TIMER_PAUSED", payload: false });
     } else {
-      // Turning timer off
-      setTimerActive(false);
-      setShowingAnswer(false);
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      if (reviewTimerRef.current) {
-        clearInterval(reviewTimerRef.current);
-      }
+      dispatch({ type: "SET_TIMER_ACTIVE", payload: false });
+      dispatch({ type: "SET_SHOWING_ANSWER", payload: false });
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (reviewTimerRef.current) clearInterval(reviewTimerRef.current);
     }
+  }, [state.timerEnabled]);
+
+  const togglePause = useCallback(() => {
+    dispatch({ type: "SET_TIMER_PAUSED", payload: !state.timerPaused });
+  }, [state.timerPaused]);
+
+  const handleReviewTimeChange = (_event: Event, newValue: number | number[]) => {
+    const value = Array.isArray(newValue) ? newValue[0] : newValue;
+    dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: value });
+    dispatch({ type: "SET_SHOWING_ANSWER", payload: false });
+    if (reviewTimerRef.current) clearInterval(reviewTimerRef.current);
   };
 
-  const togglePause = () => {
-    setTimerPaused((prev) => !prev);
-  };
+  const timerProgress = (state.timeLeft / SETTINGS.COUNTDOWN_TIME_LEFT) * 100;
+  const reviewProgress = (state.reviewCountdown / state.reviewTime) * 100;
 
-  const handleReviewTimeChange = (
-    _event: Event,
-    newValue: number | number[]
-  ) => {
-    setReviewTime(newValue as number);
-  };
-
-  // Calculate progress for the progress bar
-  const timerProgress = (timeLeft / SETTINGS.COUNTDOWN_TIME_LEFT) * 100;
-  const reviewProgress = (reviewCountdown / reviewTime) * 100;
-
+  // RENDER ここ
   return (
     <Container
       maxWidth={isMobile ? "sm" : "md"}
@@ -360,14 +300,14 @@ const JapaneseQuiz: React.FC = () => {
             }}
           >
             <Typography variant="subtitle1">
-              Thẻ {index + 1} trong {words.length}
+              Thẻ {state.index + 1} trong {words.length}
             </Typography>
 
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <FormControlLabel
                 control={
                   <Switch
-                    checked={timerEnabled}
+                    checked={state.timerEnabled}
                     onChange={toggleTimer}
                     color="primary"
                   />
@@ -375,27 +315,28 @@ const JapaneseQuiz: React.FC = () => {
                 label={
                   <Box sx={{ display: "flex", alignItems: "center" }}>
                     <TimerIcon sx={{ mr: 0.5 }} />
-                    <Typography variant="body1">Đếm ngược thời gian</Typography>
+                    <Typography variant="body1">
+                      Đếm ngược thời gian
+                    </Typography>
                   </Box>
                 }
                 labelPlacement="start"
               />
 
-              {timerEnabled && (
+              {state.timerEnabled && (
                 <>
                   <IconButton
                     onClick={togglePause}
                     color="primary"
-                    disabled={!timerActive || timeLeft === 0 || showingAnswer}
+                    disabled={!state.timerActive || state.timeLeft === 0 || state.showingAnswer}
                   >
-                    {timerPaused ? <PlayArrowIcon /> : <PauseIcon />}
+                    {state.timerPaused ? <PlayArrowIcon /> : <PauseIcon />}
                   </IconButton>
 
                   <Tooltip title="Review time settings">
                     <IconButton
                       onClick={() => {
-                        const element =
-                          document.getElementById("review-time-slider");
+                        const element = document.getElementById("review-time-slider");
                         if (element) {
                           element.style.display =
                             element.style.display === "none" ? "block" : "none";
@@ -411,7 +352,7 @@ const JapaneseQuiz: React.FC = () => {
             </Box>
           </Box>
 
-          {timerEnabled && (
+          {state.timerEnabled && (
             <Box
               id="review-time-slider"
               sx={{
@@ -423,10 +364,10 @@ const JapaneseQuiz: React.FC = () => {
               }}
             >
               <Typography variant="body2" gutterBottom>
-                Review time between questions: {reviewTime} seconds
+                Review time between questions: {state.reviewTime} seconds
               </Typography>
               <Slider
-                value={reviewTime}
+                value={state.reviewTime}
                 onChange={handleReviewTimeChange}
                 min={3}
                 max={15}
@@ -438,9 +379,9 @@ const JapaneseQuiz: React.FC = () => {
             </Box>
           )}
 
-          {timerEnabled && (
+          {state.timerEnabled && (
             <Box sx={{ px: 3, pt: 1, pb: 0 }}>
-              {showingAnswer ? (
+              {state.showingAnswer ? (
                 <>
                   <Box
                     sx={{
@@ -449,19 +390,11 @@ const JapaneseQuiz: React.FC = () => {
                       mb: 0.5,
                     }}
                   >
-                    <Typography
-                      variant="body2"
-                      color="secondary.main"
-                      fontWeight="bold"
-                    >
+                    <Typography variant="body2" color="secondary.main" fontWeight="bold">
                       Review Time:
                     </Typography>
-                    <Typography
-                      variant="body2"
-                      color="secondary.main"
-                      fontWeight="bold"
-                    >
-                      {reviewCountdown} seconds
+                    <Typography variant="body2" color="secondary.main" fontWeight="bold">
+                      {state.reviewCountdown} seconds
                     </Typography>
                   </Box>
                   <LinearProgress
@@ -489,13 +422,13 @@ const JapaneseQuiz: React.FC = () => {
                   >
                     <Typography variant="body2">Time Left:</Typography>
                     <Typography variant="body2" fontWeight="bold">
-                      {timeLeft} seconds
+                      {state.timeLeft} seconds
                     </Typography>
                   </Box>
                   <LinearProgress
                     variant="determinate"
                     value={timerProgress}
-                    color={timeLeft < 10 ? "error" : "primary"}
+                    color={state.timeLeft < 10 ? "error" : "primary"}
                     sx={{
                       height: 8,
                       borderRadius: 4,
@@ -510,40 +443,8 @@ const JapaneseQuiz: React.FC = () => {
             </Box>
           )}
 
-          {kanjiVideo && kanjiVideo.length > 0 && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                gap: "10px",
-                flexWrap: "wrap",
-                mb: 3,
-                p: 2,
-                bgcolor: "#fff",
-                borderRadius: 2,
-                border: "1px solid #e0e0e0",
-              }}
-            >
-              {
-                <video
-                  key={"video"}
-                  src={kanjiVideo}
-                  controls
-                  autoPlay={true}
-                  loop={true}
-                  style={{
-                    width: isMobile ? 120 : 160,
-                    height: isMobile ? 120 : 160,
-                  }}
-                >
-                  Your browser does not support the video tag.
-                </video>
-              }
-            </Box>
-          )}
-
           <CardContent sx={{ p: isMobile ? 2 : 4 }}>
-            {showingAnswer && (
+            {state.showingAnswer && (
               <Box
                 sx={{
                   p: 2,
@@ -554,8 +455,7 @@ const JapaneseQuiz: React.FC = () => {
                 }}
               >
                 <Typography variant="body1" color="secondary">
-                  Review time: Moving to next card in {reviewCountdown}{" "}
-                  seconds...
+                  Review time: Moving to next card in {state.reviewCountdown} seconds...
                 </Typography>
               </Box>
             )}
@@ -570,106 +470,27 @@ const JapaneseQuiz: React.FC = () => {
                   mb: 3,
                 }}
               >
-                {words[index].kanji}
+                {words[state.index].kanji}
               </Typography>
-
-              {meaning && (
-                <>
-                  <Typography
-                    variant="h5"
-                    sx={{
-                      textAlign: "center",
-                      mb: 2,
-                      fontWeight: "medium",
-                      bgcolor: "#f9f9f9",
-                      p: 2,
-                      borderRadius: 2,
-                    }}
-                  >
-                    Ý nghĩa: <strong>{meaning}</strong>
-                  </Typography>
-                  <Typography
-                    sx={{
-                      p: 2,
-                      gap: 3,
-                      display: "flex",
-                      justifyContent: "center",
-                      textAlign: "center",
-                    }}
-                  >
-                    Onyomi: <strong>{onyomi}</strong>
-                    Kunyomi: <strong>{kunyomi}</strong>
-                  </Typography>
-                </>
-              )}
+              <KanjiDetails
+                meaning={state.meaning}
+                onyomi={state.onyomi}
+                kunyomi={state.kunyomi}
+                kanjiAnimation={state.kanjiAnimation}
+                kanjiVideo={state.kanjiVideo}
+                isMobile={isMobile}
+                isTablet={isTablet}
+              />
             </Box>
-
-            {kanjiAnimation.length > 0 && (
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: "10px",
-                  flexWrap: "wrap",
-                  mb: 3,
-                  p: 2,
-                  bgcolor: "#fff",
-                  borderRadius: 2,
-                  border: "1px solid #e0e0e0",
-                }}
-              >
-                {kanjiAnimation.map((frame, idx) => (
-                  <img
-                    key={idx}
-                    src={frame}
-                    alt={`Stroke ${idx}`}
-                    style={{
-                      width: isMobile ? 60 : 70,
-                      height: isMobile ? 60 : 70,
-                    }}
-                  />
-                ))}
-              </Box>
-            )}
-
-            {example && (
-              <Box
-                sx={{
-                  mb: 3,
-                  p: 2,
-                  bgcolor: "#f0f7ff",
-                  borderRadius: 2,
-                  border: "1px solid #e6f0ff",
-                }}
-              >
-                <Typography variant="h6" sx={{ mb: 1 }}>
-                  Ví dụ:
-                </Typography>
-                <Typography variant="body1" sx={{ fontSize: "1.1rem", mb: 1 }}>
-                  <strong>{example.japanese}</strong> ({example.meaning.english}
-                  )
-                </Typography>
-                {example.audio && (
-                  <Box
-                    sx={{ display: "flex", justifyContent: "center", mt: 1 }}
-                  >
-                    <audio controls style={{ width: "100%" }}>
-                      <source src={example.audio.mp3} type="audio/mpeg" />
-                      Your browser does not support the audio element.
-                    </audio>
-                  </Box>
-                )}
-              </Box>
-            )}
 
             <TextField
               label="Nhập Hiragana"
               variant="outlined"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
+              value={state.input}
+              onChange={(e) => dispatch({ type: "SET_INPUT", payload: e.target.value })}
               onKeyPress={handleKeyPress}
               fullWidth
-              disabled={timeLeft === 0 || showingAnswer}
+              disabled={state.timeLeft === 0 || state.showingAnswer}
               InputProps={{
                 style: { fontSize: "1.2rem" },
               }}
@@ -687,7 +508,7 @@ const JapaneseQuiz: React.FC = () => {
 
             <Typography
               variant="h5"
-              color={message.includes("✅") ? "success.main" : "error.main"}
+              color={state.message.includes("✅") ? "success.main" : "error.main"}
               sx={{
                 textAlign: "center",
                 mb: 3,
@@ -695,7 +516,7 @@ const JapaneseQuiz: React.FC = () => {
                 fontWeight: "bold",
               }}
             >
-              {message}
+              {state.message}
             </Typography>
 
             <Box
@@ -706,24 +527,9 @@ const JapaneseQuiz: React.FC = () => {
                 flexDirection: isMobile ? "column" : "row",
               }}
             >
-              <NavigationButton
-                type="prev"
-                onClick={prevWord}
-                isMobile={isMobile}
-              />
-
-              <NavigationButton
-                type="check"
-                onClick={checkAnswer}
-                disabled={timeLeft === 0 || showingAnswer}
-                isMobile={isMobile}
-              />
-
-              <NavigationButton
-                type="next"
-                onClick={nextWord}
-                isMobile={isMobile}
-              />
+              <NavigationButton type="prev" onClick={prevWord} isMobile={isMobile} />
+              <NavigationButton type="check" onClick={checkAnswer} disabled={state.timeLeft === 0 || state.showingAnswer} isMobile={isMobile} />
+              <NavigationButton type="next" onClick={nextWord} isMobile={isMobile} />
             </Box>
           </CardContent>
         </Paper>
