@@ -33,7 +33,7 @@ import { SETTINGS } from "../settings";
 import { KanjiData, Word } from "../types";
 import { shuffle, fetchKanji, fetchListWordInSheet } from "../utils";
 import { quizReducer, QuizState } from "../types/state";
-import WrongWordsModal  from "../components/WrongWordsModal";
+import WrongWordsModal from "../components/WrongWordsModal";
 
 const JapaneseQuiz: React.FC = () => {
   const initialState: QuizState = {
@@ -209,7 +209,7 @@ const JapaneseQuiz: React.FC = () => {
     dispatch({ type: "SET_TIMER_ACTIVE", payload: false });
     const currentWord = words[state.index];
     if (!currentWord) return;
-    
+
     if (state.input.trim() === currentWord.hiragana) {
       dispatch({ type: "SET_MESSAGE", payload: "✅ Đúng!" });
     } else {
@@ -219,7 +219,7 @@ const JapaneseQuiz: React.FC = () => {
     dispatch({ type: "SET_MEANING", payload: currentWord.meaning });
     fetchKanjiDetails(currentWord.kanji);
   }, [words, state.index, state.input, fetchKanjiDetails]);
-  
+
 
   const nextWord = useCallback(() => {
     if (!words || words.length === 0) return;
@@ -303,7 +303,7 @@ const JapaneseQuiz: React.FC = () => {
             height: "100vh",
           }}
         >
-          <CircularProgress />
+          <CircularProgress color="inherit"/>
         </Container>
       ) : !data || data.length === 0 || !words || words.length === 0 ? (
         <Typography variant="h5" textAlign="center">
@@ -590,7 +590,11 @@ const JapaneseQuiz: React.FC = () => {
         }}
         wrongWords={wrongWords}
       />
+      <Typography variant="body2" color="white" align="center" p={2}>
+        © 2025 From Trieu先生 with ❤️. All rights reserved.
+      </Typography>
     </Container>
+
   );
 };
 
