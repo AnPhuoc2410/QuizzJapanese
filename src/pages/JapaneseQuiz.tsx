@@ -1,4 +1,10 @@
-import React, { useEffect, useReducer, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { useLocation } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -14,6 +20,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  SelectChangeEvent,
   Slider,
   Switch,
   TextField,
@@ -30,7 +37,7 @@ import NavigationButton from "../components/ButtonComponent";
 import KanjiDetails from "../components/KanjiDetails";
 import { ENV } from "../envs";
 import { SETTINGS } from "../settings";
-import { KanjiData, Word } from "../types";
+import { KanjiData, Word, WrongModel } from "../types";
 import { shuffle, fetchKanji, fetchListWordInSheet } from "../utils";
 import { quizReducer, QuizState } from "../types/state";
 import WrongWordsModal from "../components/WrongWordsModal";
@@ -61,7 +68,9 @@ const JapaneseQuiz: React.FC = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const reviewTimerRef = useRef<NodeJS.Timeout | null>(null);
   const answerChecked = useRef<boolean>(false);
-  const [wrongMode, setWrongMode] = useState<"none" | "review" | "practice">("none");
+  const [wrongMode, setWrongMode] = useState<WrongModel>(
+    "none" as unknown as WrongModel
+  );
   const [openModal, setOpenModal] = useState(false);
 
   const wrongWords: Word[] = state.wrongWords;
@@ -71,7 +80,9 @@ const JapaneseQuiz: React.FC = () => {
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
   // Cache for Kanji API responses
-  const [kanjiCache, setKanjiCache] = useState<{ [key: string]: KanjiData }>({});
+  const [kanjiCache, setKanjiCache] = useState<{ [key: string]: KanjiData }>(
+    {}
+  );
 
   // Handle shuffle setting from location state
   const location = useLocation();
@@ -93,7 +104,12 @@ const JapaneseQuiz: React.FC = () => {
   }, [data, isShuffle]);
 
   useEffect(() => {
-    if (state.timerEnabled && state.timerActive && !state.timerPaused && !state.showingAnswer) {
+    if (
+      state.timerEnabled &&
+      state.timerActive &&
+      !state.timerPaused &&
+      !state.showingAnswer
+    ) {
       timerRef.current = setInterval(() => {
         dispatch({ type: "UPDATE_TIMER", payload: state.timeLeft - 1 });
         if (state.timeLeft <= 1) {
@@ -110,13 +126,22 @@ const JapaneseQuiz: React.FC = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [state.timerEnabled, state.timerActive, state.timerPaused, state.showingAnswer, state.timeLeft]);
+  }, [
+    state.timerEnabled,
+    state.timerActive,
+    state.timerPaused,
+    state.showingAnswer,
+    state.timeLeft,
+  ]);
 
   useEffect(() => {
     if (state.showingAnswer) {
       dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: state.reviewTime });
       reviewTimerRef.current = setInterval(() => {
-        dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: state.reviewCountdown - 1 });
+        dispatch({
+          type: "SET_REVIEW_COUNTDOWN",
+          payload: state.reviewCountdown - 1,
+        });
         if (state.reviewCountdown <= 1) {
           clearInterval(reviewTimerRef.current as NodeJS.Timeout);
           dispatch({ type: "SET_SHOWING_ANSWER", payload: false });
@@ -135,35 +160,38 @@ const JapaneseQuiz: React.FC = () => {
     dispatch({ type: "SET_SHOWING_ANSWER", payload: true });
   }, []);
 
-  const fetchKanjiDetails = useCallback(async (kanji: string) => {
-    if (kanjiCache[kanji]) {
-      console.log("Returning cached data for:", kanji);
-      updateKanjiState(kanjiCache[kanji]);
-      return;
-    }
-    try {
-      const data = await fetchKanji(kanji);
-      console.log("Kanji API Response:", data);
-      setKanjiCache((prev) => ({ ...prev, [kanji]: data }));
-      updateKanjiState(data);
-    } catch (error) {
-      console.error("Error fetching Kanji details:", error);
-      dispatch({
-        type: "SET_KANJI_DETAILS",
-        payload: {
-          onyomi: "",
-          kunyomi: "",
-          kanjiAnimation: [],
-          kanjiVideo: null,
-          example: null,
-        },
-      });
-    }
-  }, [kanjiCache]);
+  const fetchKanjiDetails = useCallback(
+    async (kanji: string) => {
+      if (kanjiCache[kanji]) {
+        console.log("Returning cached data for:", kanji);
+        updateKanjiState(kanjiCache[kanji]);
+        return;
+      }
+      try {
+        const data = await fetchKanji(kanji);
+        console.log("Kanji API Response:", data);
+        setKanjiCache((prev) => ({ ...prev, [kanji]: data }));
+        updateKanjiState(data);
+      } catch (error) {
+        console.error("Error fetching Kanji details:", error);
+        dispatch({
+          type: "SET_KANJI_DETAILS",
+          payload: {
+            onyomi: "",
+            kunyomi: "",
+            kanjiAnimation: [],
+            kanjiVideo: null,
+            example: null,
+          },
+        });
+      }
+    },
+    [kanjiCache]
+  );
 
-  const handleWrongModeChange = (event: any) => {
-    const mode = event.target.value as "none" | "review" | "practice";
-    setWrongMode(mode);
+  const handleWrongModeChange = (event: SelectChangeEvent<WrongModel>) => {
+    const mode = event.target.value;
+    setWrongMode(mode as WrongModel);
 
     if (mode === "review") {
       setOpenModal(true);
@@ -175,7 +203,7 @@ const JapaneseQuiz: React.FC = () => {
       } else {
         alert("Bạn chưa có từ sai nào để luyện tập!");
       }
-      setWrongMode("none");
+      setWrongMode("none" as unknown as WrongModel);
     }
   };
 
@@ -187,18 +215,19 @@ const JapaneseQuiz: React.FC = () => {
         kunyomi: data.kanji?.kunyomi?.hiragana || "N/A",
         kanjiAnimation: data.radical?.animation || [],
         kanjiVideo: data.kanji?.video.webm || null,
-        example: data.examples && data.examples[0]
-          ? {
-            japanese: data.examples[0].japanese,
-            meaning: data.examples[0].meaning,
-            audio: {
-              opus: data.examples[0].audio?.opus || "",
-              aac: data.examples[0].audio?.aac || "",
-              ogg: data.examples[0].audio?.ogg || "",
-              mp3: data.examples[0].audio?.mp3 || "",
-            },
-          }
-          : null,
+        example:
+          data.examples && data.examples[0]
+            ? {
+                japanese: data.examples[0].japanese,
+                meaning: data.examples[0].meaning,
+                audio: {
+                  opus: data.examples[0].audio?.opus || "",
+                  aac: data.examples[0].audio?.aac || "",
+                  ogg: data.examples[0].audio?.ogg || "",
+                  mp3: data.examples[0].audio?.mp3 || "",
+                },
+              }
+            : null,
       },
     });
   }, []);
@@ -213,13 +242,15 @@ const JapaneseQuiz: React.FC = () => {
     if (state.input.trim() === currentWord.hiragana) {
       dispatch({ type: "SET_MESSAGE", payload: "✅ Đúng!" });
     } else {
-      dispatch({ type: "SET_MESSAGE", payload: `❌ Sai! Đáp án: ${currentWord.hiragana}` });
+      dispatch({
+        type: "SET_MESSAGE",
+        payload: `❌ Sai! Đáp án: ${currentWord.hiragana}`,
+      });
       dispatch({ type: "ADD_WRONG_WORD", payload: currentWord });
     }
     dispatch({ type: "SET_MEANING", payload: currentWord.meaning });
     fetchKanjiDetails(currentWord.kanji);
   }, [words, state.index, state.input, fetchKanjiDetails]);
-
 
   const nextWord = useCallback(() => {
     if (!words || words.length === 0) return;
@@ -267,7 +298,10 @@ const JapaneseQuiz: React.FC = () => {
     dispatch({ type: "SET_TIMER_PAUSED", payload: !state.timerPaused });
   }, [state.timerPaused]);
 
-  const handleReviewTimeChange = (_event: Event, newValue: number | number[]) => {
+  const handleReviewTimeChange = (
+    _event: Event,
+    newValue: number | number[]
+  ) => {
     const value = Array.isArray(newValue) ? newValue[0] : newValue;
     dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: value });
     dispatch({ type: "SET_SHOWING_ANSWER", payload: false });
@@ -307,7 +341,8 @@ const JapaneseQuiz: React.FC = () => {
         </Container>
       ) : !data || data.length === 0 || !words || words.length === 0 ? (
         <Typography variant="h5" textAlign="center">
-          Không có dữ liệu từ vựng. Hãy kiểm tra lại URL hoặc liên hệ với người quản trị.
+          Không có dữ liệu từ vựng. Hãy kiểm tra lại URL hoặc liên hệ với người
+          quản trị.
         </Typography>
       ) : (
         <Paper
@@ -362,9 +397,7 @@ const JapaneseQuiz: React.FC = () => {
                 label={
                   <Box sx={{ display: "flex", alignItems: "center" }}>
                     <TimerIcon sx={{ mr: 0.5 }} />
-                    <Typography variant="body1">
-                      Đếm ngược thời gian
-                    </Typography>
+                    <Typography variant="body1">Đếm ngược thời gian</Typography>
                   </Box>
                 }
                 labelPlacement="start"
@@ -375,7 +408,11 @@ const JapaneseQuiz: React.FC = () => {
                   <IconButton
                     onClick={togglePause}
                     color="primary"
-                    disabled={!state.timerActive || state.timeLeft === 0 || state.showingAnswer}
+                    disabled={
+                      !state.timerActive ||
+                      state.timeLeft === 0 ||
+                      state.showingAnswer
+                    }
                   >
                     {state.timerPaused ? <PlayArrowIcon /> : <PauseIcon />}
                   </IconButton>
@@ -383,7 +420,8 @@ const JapaneseQuiz: React.FC = () => {
                   <Tooltip title="Review time settings">
                     <IconButton
                       onClick={() => {
-                        const element = document.getElementById("review-time-slider");
+                        const element =
+                          document.getElementById("review-time-slider");
                         if (element) {
                           element.style.display =
                             element.style.display === "none" ? "block" : "none";
@@ -437,10 +475,18 @@ const JapaneseQuiz: React.FC = () => {
                       mb: 0.5,
                     }}
                   >
-                    <Typography variant="body2" color="secondary.main" fontWeight="bold">
+                    <Typography
+                      variant="body2"
+                      color="secondary.main"
+                      fontWeight="bold"
+                    >
                       Xem Lại:
                     </Typography>
-                    <Typography variant="body2" color="secondary.main" fontWeight="bold">
+                    <Typography
+                      variant="body2"
+                      color="secondary.main"
+                      fontWeight="bold"
+                    >
                       {state.reviewCountdown} giây
                     </Typography>
                   </Box>
@@ -502,7 +548,8 @@ const JapaneseQuiz: React.FC = () => {
                 }}
               >
                 <Typography variant="body1" color="secondary">
-                  Thời gian xem: Chuyển sang thẻ tiếp theo trong {state.reviewCountdown} giây...
+                  Thời gian xem: Chuyển sang thẻ tiếp theo trong{" "}
+                  {state.reviewCountdown} giây...
                 </Typography>
               </Box>
             )}
@@ -535,7 +582,9 @@ const JapaneseQuiz: React.FC = () => {
               label="Nhập Hiragana"
               variant="outlined"
               value={state.input}
-              onChange={(e) => dispatch({ type: "SET_INPUT", payload: e.target.value })}
+              onChange={(e) =>
+                dispatch({ type: "SET_INPUT", payload: e.target.value })
+              }
               onKeyPress={handleKeyPress}
               fullWidth
               disabled={state.timeLeft === 0 || state.showingAnswer}
@@ -556,7 +605,9 @@ const JapaneseQuiz: React.FC = () => {
 
             <Typography
               variant="h5"
-              color={state.message.includes("✅") ? "success.main" : "error.main"}
+              color={
+                state.message.includes("✅") ? "success.main" : "error.main"
+              }
               sx={{
                 textAlign: "center",
                 marginBottom: isMobile ? 2 : 1,
@@ -576,9 +627,22 @@ const JapaneseQuiz: React.FC = () => {
                 // flexDirection: isMobile ? "column" : "row",
               }}
             >
-              <NavigationButton type="prev" onClick={prevWord} isMobile={isMobile} />
-              <NavigationButton type="check" onClick={checkAnswer} disabled={state.timeLeft === 0 || state.showingAnswer} isMobile={isMobile} />
-              <NavigationButton type="next" onClick={nextWord} isMobile={isMobile} />
+              <NavigationButton
+                type="prev"
+                onClick={prevWord}
+                isMobile={isMobile}
+              />
+              <NavigationButton
+                type="check"
+                onClick={checkAnswer}
+                disabled={state.timeLeft === 0 || state.showingAnswer}
+                isMobile={isMobile}
+              />
+              <NavigationButton
+                type="next"
+                onClick={nextWord}
+                isMobile={isMobile}
+              />
             </Box>
           </CardContent>
         </Paper>
@@ -588,7 +652,7 @@ const JapaneseQuiz: React.FC = () => {
         open={openModal}
         onClose={() => {
           setOpenModal(false);
-          setWrongMode("none");
+          setWrongMode("none" as unknown as WrongModel);
         }}
         wrongWords={wrongWords}
       />
@@ -596,7 +660,6 @@ const JapaneseQuiz: React.FC = () => {
         © 2025 From Trieu先生 with ❤️. All rights reserved.
       </Typography>
     </Container>
-
   );
 };
 
