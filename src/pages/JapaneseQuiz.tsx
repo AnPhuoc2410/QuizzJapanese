@@ -6,10 +6,14 @@ import {
   CardContent,
   CircularProgress,
   Container,
+  FormControl,
   FormControlLabel,
   IconButton,
+  InputLabel,
   LinearProgress,
+  MenuItem,
   Paper,
+  Select,
   Slider,
   Switch,
   TextField,
@@ -29,6 +33,7 @@ import { SETTINGS } from "../settings";
 import { KanjiData, Word } from "../types";
 import { shuffle, fetchKanji, fetchListWordInSheet } from "../utils";
 import { quizReducer, QuizState } from "../types/state";
+import WrongWordsModal  from "../components/WrongWordsModal";
 
 const JapaneseQuiz: React.FC = () => {
   const initialState: QuizState = {
@@ -48,6 +53,7 @@ const JapaneseQuiz: React.FC = () => {
     reviewTime: SETTINGS.REVIEW_TIME_EACH_QUESTION,
     showingAnswer: false,
     reviewCountdown: 0,
+    wrongWords: [],
   };
 
   const [state, dispatch] = useReducer(quizReducer, initialState);
@@ -55,6 +61,10 @@ const JapaneseQuiz: React.FC = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const reviewTimerRef = useRef<NodeJS.Timeout | null>(null);
   const answerChecked = useRef<boolean>(false);
+  const [wrongMode, setWrongMode] = useState<"none" | "review" | "practice">("none");
+  const [openModal, setOpenModal] = useState(false);
+
+  const wrongWords: Word[] = state.wrongWords;
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -151,6 +161,24 @@ const JapaneseQuiz: React.FC = () => {
     }
   }, [kanjiCache]);
 
+  const handleWrongModeChange = (event: any) => {
+    const mode = event.target.value as "none" | "review" | "practice";
+    setWrongMode(mode);
+
+    if (mode === "review") {
+      setOpenModal(true);
+    } else if (mode === "practice") {
+      // LÀM GÌ Ở ĐÂY ĐỂ KIỂM TRA LẠI TỪ SAI MÀ LƯỜI LÀM
+      if (wrongWords.length > 0) {
+        alert("CHƯA CÓ CHỨC NĂNG PRACTICE TỪ SAI :))");
+        // LÀM VÔ ĐÂY MỘT TRANG MỚI CHẢ HẠN
+      } else {
+        alert("Bạn chưa có từ sai nào để luyện tập!");
+      }
+      setWrongMode("none");
+    }
+  };
+
   const updateKanjiState = useCallback((data: KanjiData) => {
     dispatch({
       type: "SET_KANJI_DETAILS",
@@ -161,15 +189,15 @@ const JapaneseQuiz: React.FC = () => {
         kanjiVideo: data.kanji?.video.webm || null,
         example: data.examples && data.examples[0]
           ? {
-              japanese: data.examples[0].japanese,
-              meaning: data.examples[0].meaning,
-              audio: {
-                opus: data.examples[0].audio?.opus || "",
-                aac: data.examples[0].audio?.aac || "",
-                ogg: data.examples[0].audio?.ogg || "",
-                mp3: data.examples[0].audio?.mp3 || "",
-              },
-            }
+            japanese: data.examples[0].japanese,
+            meaning: data.examples[0].meaning,
+            audio: {
+              opus: data.examples[0].audio?.opus || "",
+              aac: data.examples[0].audio?.aac || "",
+              ogg: data.examples[0].audio?.ogg || "",
+              mp3: data.examples[0].audio?.mp3 || "",
+            },
+          }
           : null,
       },
     });
@@ -181,14 +209,17 @@ const JapaneseQuiz: React.FC = () => {
     dispatch({ type: "SET_TIMER_ACTIVE", payload: false });
     const currentWord = words[state.index];
     if (!currentWord) return;
+    
     if (state.input.trim() === currentWord.hiragana) {
       dispatch({ type: "SET_MESSAGE", payload: "✅ Đúng!" });
     } else {
       dispatch({ type: "SET_MESSAGE", payload: `❌ Sai! Đáp án: ${currentWord.hiragana}` });
+      dispatch({ type: "ADD_WRONG_WORD", payload: currentWord });
     }
     dispatch({ type: "SET_MEANING", payload: currentWord.meaning });
     fetchKanjiDetails(currentWord.kanji);
   }, [words, state.index, state.input, fetchKanjiDetails]);
+  
 
   const nextWord = useCallback(() => {
     if (!words || words.length === 0) return;
@@ -302,6 +333,22 @@ const JapaneseQuiz: React.FC = () => {
             <Typography variant="subtitle1">
               Thẻ {state.index + 1} trong {words.length}
             </Typography>
+
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+              <FormControl variant="outlined" size="small">
+                <InputLabel id="wrong-mode-label">Wrong Words</InputLabel>
+                <Select
+                  labelId="wrong-mode-label"
+                  value={wrongMode}
+                  onChange={handleWrongModeChange}
+                  label="Wrong Words"
+                >
+                  <MenuItem value="none">Select Option</MenuItem>
+                  <MenuItem value="review">Review</MenuItem>
+                  <MenuItem value="practice">Practice</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
 
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <FormControlLabel
@@ -534,6 +581,15 @@ const JapaneseQuiz: React.FC = () => {
           </CardContent>
         </Paper>
       )}
+
+      <WrongWordsModal
+        open={openModal}
+        onClose={() => {
+          setOpenModal(false);
+          setWrongMode("none");
+        }}
+        wrongWords={wrongWords}
+      />
     </Container>
   );
 };

@@ -1,5 +1,5 @@
 import { SETTINGS } from "../settings";
-import { Example } from "../types";
+import { Example, Word } from "../types";
 
 
 export interface QuizState {
@@ -19,6 +19,7 @@ export interface QuizState {
     reviewTime: number;
     showingAnswer: boolean;
     reviewCountdown: number;
+    wrongWords: Word[];
 }
 
 type QuizAction =
@@ -43,7 +44,9 @@ type QuizAction =
     | { type: "SET_TIMER_PAUSED"; payload: boolean }
     | { type: "SET_REVIEW_COUNTDOWN"; payload: number }
     | { type: "SET_SHOWING_ANSWER"; payload: boolean }
-    | { type: "RESET_STATE" };
+    | { type: "RESET_STATE" }
+    | { type: "ADD_WRONG_WORD"; payload: Word }
+    | { type: "CLEAR_WRONG_WORDS" };
 
 export function quizReducer(state: QuizState, action: QuizAction): QuizState {
     switch (action.type) {
@@ -118,6 +121,13 @@ export function quizReducer(state: QuizState, action: QuizAction): QuizState {
                 kanjiVideo: null,
                 example: null,
             };
+        case "ADD_WRONG_WORD":
+            if (state.wrongWords.find((w) => w.kanji === action.payload.kanji)) {
+                return state;
+            }
+            return { ...state, wrongWords: [...state.wrongWords, action.payload] };
+        case "CLEAR_WRONG_WORDS":
+            return { ...state, wrongWords: [] };
         default:
             return state;
     }
