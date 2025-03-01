@@ -303,7 +303,7 @@ const JapaneseQuiz: React.FC = () => {
             height: "100vh",
           }}
         >
-          <CircularProgress color="inherit"/>
+          <CircularProgress color="inherit" />
         </Container>
       ) : !data || data.length === 0 || !words || words.length === 0 ? (
         <Typography variant="h5" textAlign="center">
@@ -507,18 +507,19 @@ const JapaneseQuiz: React.FC = () => {
               </Box>
             )}
 
-            <Box sx={{ mb: 4, mt: 2 }}>
+            <Box sx={{ mb: isMobile ? 2 : 4, mt: isMobile ? 1 : 2 }}>
               <Typography
                 variant="h1"
                 sx={{
                   textAlign: "center",
-                  fontSize: isMobile ? "2rem" : "7rem",
+                  fontSize: isMobile ? "clamp(1.5rem, 5vw, 2.5rem)" : "7rem",
                   lineHeight: 1.2,
-                  mb: 3,
+                  mb: isMobile ? 2 : 3,
                 }}
               >
                 {words[state.index].kanji}
               </Typography>
+
               <KanjiDetails
                 meaning={state.meaning}
                 onyomi={state.onyomi}
@@ -558,9 +559,10 @@ const JapaneseQuiz: React.FC = () => {
               color={state.message.includes("✅") ? "success.main" : "error.main"}
               sx={{
                 textAlign: "center",
-                mb: 3,
+                marginBottom: isMobile ? 2 : 1,
                 height: 40,
                 fontWeight: "bold",
+                fontSize: isMobile ? "1rem" : "1.5rem",
               }}
             >
               {state.message}

@@ -58,18 +58,23 @@ const NavigationButton: React.FC<NavigationButtonProps> = ({
   const config = buttonConfig[type];
 
   const commonSx: SxProps<Theme> = {
-    py: isMobile ? 1 : 1.5, 
-    fontSize: isMobile ? "0.8rem" : "1rem", 
+    px: isMobile ? 1 : 2,
+    py: isMobile ? 0.5 : 1,
+    fontSize: isMobile ? "0.8rem" : "1rem",
     borderRadius: 2,
-    minWidth: isMobile ? "auto" : "64px",
-    ...("fontWeight" in config && { fontWeight: config.fontWeight }),
+    minWidth: isMobile ? "40px" : "auto",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: config.text ? 1 : 0,
     ...sx,
   };
 
   return (
     <Button
       variant={config.variant}
-      size={isMobile ? "small" : "large"}
+      size={isMobile ? "small" : "medium"}
       color={config.color === "default" ? undefined : config.color}
       {...(config.iconPosition === "start"
         ? { startIcon: config.icon }

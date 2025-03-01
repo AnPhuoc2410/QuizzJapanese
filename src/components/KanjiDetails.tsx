@@ -73,7 +73,6 @@ const KanjiDetails: React.FC<KanjiDetailsProps> = ({
               display: "flex",
               justifyContent: "center",
               textAlign: "center",
-              flexDirection: isMobile ? "column" : "row",
               fontSize: isMobile ? "0.9rem" : isTablet ? "1rem" : undefined,
             }}
           >
