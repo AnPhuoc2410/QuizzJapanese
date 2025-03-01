@@ -136,13 +136,14 @@ const JapaneseQuiz: React.FC = () => {
 
   useEffect(() => {
     if (state.showingAnswer) {
-      dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: state.reviewTime });
+      let counter = state.reviewTime;
+      dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: counter });
+      
       reviewTimerRef.current = setInterval(() => {
-        dispatch({
-          type: "SET_REVIEW_COUNTDOWN",
-          payload: state.reviewCountdown - 1,
-        });
-        if (state.reviewCountdown <= 1) {
+        counter -= 1;
+        dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: counter });
+        
+        if (counter <= 0) {
           clearInterval(reviewTimerRef.current as NodeJS.Timeout);
           dispatch({ type: "SET_SHOWING_ANSWER", payload: false });
           nextWord();
@@ -154,7 +155,7 @@ const JapaneseQuiz: React.FC = () => {
     return () => {
       if (reviewTimerRef.current) clearInterval(reviewTimerRef.current);
     };
-  }, [state.showingAnswer, state.reviewCountdown, state.reviewTime]);
+  }, [state.showingAnswer, state.reviewTime]);
 
   const startReviewPeriod = useCallback(() => {
     dispatch({ type: "SET_SHOWING_ANSWER", payload: true });
