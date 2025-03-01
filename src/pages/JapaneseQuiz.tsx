@@ -307,7 +307,7 @@ const JapaneseQuiz: React.FC = () => {
         </Container>
       ) : !data || data.length === 0 || !words || words.length === 0 ? (
         <Typography variant="h5" textAlign="center">
-          No words found. Please check your data source.
+          Không có dữ liệu từ vựng. Hãy kiểm tra lại URL hoặc liên hệ với người quản trị.
         </Typography>
       ) : (
         <Paper
@@ -571,7 +571,7 @@ const JapaneseQuiz: React.FC = () => {
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 1,
-                flexDirection: isMobile ? "column" : "row",
+                // flexDirection: isMobile ? "column" : "row",
               }}
             >
               <NavigationButton type="prev" onClick={prevWord} isMobile={isMobile} />
