@@ -334,18 +334,18 @@ const JapaneseQuiz: React.FC = () => {
               Thẻ {state.index + 1} trong {words.length}
             </Typography>
 
-            <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
               <FormControl variant="outlined" size="small">
-                <InputLabel id="wrong-mode-label">Wrong Words</InputLabel>
+                <InputLabel id="wrong-mode-label">Danh sách</InputLabel>
                 <Select
                   labelId="wrong-mode-label"
                   value={wrongMode}
                   onChange={handleWrongModeChange}
                   label="Wrong Words"
                 >
-                  <MenuItem value="none">Select Option</MenuItem>
-                  <MenuItem value="review">Review</MenuItem>
-                  <MenuItem value="practice">Practice</MenuItem>
+                  <MenuItem value="none">Thêm</MenuItem>
+                  <MenuItem value="review">Xem Lại</MenuItem>
+                  <MenuItem value="practice">Luyện Tập</MenuItem>
                 </Select>
               </FormControl>
             </Box>
@@ -411,7 +411,7 @@ const JapaneseQuiz: React.FC = () => {
               }}
             >
               <Typography variant="body2" gutterBottom>
-                Review time between questions: {state.reviewTime} seconds
+                Thời gian xem lại: {state.reviewTime} giây
               </Typography>
               <Slider
                 value={state.reviewTime}
@@ -438,10 +438,10 @@ const JapaneseQuiz: React.FC = () => {
                     }}
                   >
                     <Typography variant="body2" color="secondary.main" fontWeight="bold">
-                      Review Time:
+                      Xem Lại:
                     </Typography>
                     <Typography variant="body2" color="secondary.main" fontWeight="bold">
-                      {state.reviewCountdown} seconds
+                      {state.reviewCountdown} giây
                     </Typography>
                   </Box>
                   <LinearProgress
@@ -467,9 +467,9 @@ const JapaneseQuiz: React.FC = () => {
                       mb: 0.5,
                     }}
                   >
-                    <Typography variant="body2">Time Left:</Typography>
+                    <Typography variant="body2">Thời Gian Còn Lại:</Typography>
                     <Typography variant="body2" fontWeight="bold">
-                      {state.timeLeft} seconds
+                      {state.timeLeft} giây
                     </Typography>
                   </Box>
                   <LinearProgress
@@ -502,7 +502,7 @@ const JapaneseQuiz: React.FC = () => {
                 }}
               >
                 <Typography variant="body1" color="secondary">
-                  Review time: Moving to next card in {state.reviewCountdown} seconds...
+                  Thời gian xem: Chuyển sang thẻ tiếp theo trong {state.reviewCountdown} giây...
                 </Typography>
               </Box>
             )}

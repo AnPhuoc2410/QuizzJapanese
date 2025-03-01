@@ -2,8 +2,7 @@ import React from "react";
 import { 
   Box, Button, Modal, Typography, List, ListItem, ListItemText 
 } from "@mui/material";
-import { Word } from "../types"; // Assuming your Word type includes 'kanji', 'hiragana', and 'meaning'
-
+import { Word } from "../types";
 interface WrongWordsModalProps {
   open: boolean;
   onClose: () => void;
@@ -28,10 +27,10 @@ const WrongWordsModal: React.FC<WrongWordsModalProps> = ({ open, onClose, wrongW
         }}
       >
         <Typography variant="h6" gutterBottom>
-          Wrong Words Review
+          Từ Sai
         </Typography>
         {wrongWords.length === 0 ? (
-          <Typography>No wrong words yet!</Typography>
+          <Typography>Chưa có từ sai!</Typography>
         ) : (
           <List>
             {wrongWords.map((word, idx) => (
@@ -58,7 +57,7 @@ const WrongWordsModal: React.FC<WrongWordsModalProps> = ({ open, onClose, wrongW
           </List>
         )}
         <Button onClick={onClose} sx={{ mt: 2 }} fullWidth variant="contained">
-          Close
+          Đóng
         </Button>
       </Box>
     </Modal>
