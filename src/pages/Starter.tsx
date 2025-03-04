@@ -1,9 +1,41 @@
-import { Box, Button, Typography } from "@mui/material";
+import React, { useState } from "react";
+import {
+  Box,
+  Button,
+  Typography,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Checkbox,
+  FormControlLabel,
+} from "@mui/material";
 import { useNavigate } from "react-router";
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 
 const Starter = () => {
+  const [open, setOpen] = useState(false); // State to handle dialog
+  const [numberRange, setNumberRange] = useState(1); // State to handle selected number range
+  const [isShuffleCustom, setIsShuffleCustom] = useState(false); // State to handle shuffle option
   const navigate = useNavigate();
+
+  const handleClickOpen = () => {
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const handleConfirm = () => {
+    // Navigate to next page with the chosen settings
+    navigate("/home", { state: { numberRange, isShuffleCustom } });
+    setOpen(false);
+  };
 
   return (
     <Box
@@ -83,7 +115,59 @@ const Starter = () => {
         >
           Không trộn thẻ
         </Button>
+        <Box>
+          <Button
+            variant="outlined"
+            size="large"
+            sx={{
+              margin: 1,
+              padding: "0.8rem 2rem",
+              fontSize: "1rem",
+              backgroundColor: "#2973B2", // Custom color for better contrast
+              color: "#FFFFFF",
+            }}
+            onClick={handleClickOpen}
+          >
+            Custom
+          </Button>
+        </Box>
       </Box>
+
+      {/* Dialog for Custom Options */}
+      <Dialog open={open} onClose={handleClose}>
+        <DialogTitle>Chọn chế độ Custom</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel id="number-range-label">Chọn phần</InputLabel>
+            <Select
+              labelId="number-range-label"
+              value={numberRange}
+              onChange={(e) => setNumberRange(Number(e.target.value))}
+            >
+              <MenuItem value={1}>Phan 1: 1 den 150</MenuItem>
+              <MenuItem value={2}>Phan 2: 151 den 300</MenuItem>
+              <MenuItem value={3}>Phan 3: 301 den 451</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isShuffleCustom}
+                onChange={(e) => setIsShuffleCustom(e.target.checked)}
+              />
+            }
+            label="Trộn thẻ"
+            sx={{ mt: 2 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Hủy</Button>
+          <Button onClick={handleConfirm} variant="contained">
+            Xác nhận
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
