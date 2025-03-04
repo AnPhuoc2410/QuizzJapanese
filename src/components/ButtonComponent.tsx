@@ -34,14 +34,14 @@ const NavigationButton: React.FC<NavigationButtonProps> = ({
     prev: {
       variant: "outlined" as const,
       color: "default" as const,
-      text: customText || "Từ trước đó",
+      text: isMobile ? "" : customText || "Từ trước đó", // Hide text on mobile
       icon: <ArrowBackIcon />,
       iconPosition: "start" as const,
     },
     check: {
       variant: "contained" as const,
       color: "primary" as const,
-      text: customText || "Kiểm tra",
+      text: isMobile ? "" : customText || "Kiểm tra",
       icon: <CheckCircleIcon />,
       iconPosition: "end" as const,
       fontWeight: "bold",
@@ -49,7 +49,7 @@ const NavigationButton: React.FC<NavigationButtonProps> = ({
     next: {
       variant: "outlined" as const,
       color: "secondary" as const,
-      text: customText || "Từ tiếp theo",
+      text: isMobile ? "" : customText || "Từ tiếp theo",
       icon: <ArrowForwardIcon />,
       iconPosition: "end" as const,
     },
@@ -57,19 +57,24 @@ const NavigationButton: React.FC<NavigationButtonProps> = ({
 
   const config = buttonConfig[type];
 
-  // Common styles to apply to all buttons
   const commonSx: SxProps<Theme> = {
-    py: 1.5,
-    fontSize: "1rem",
+    px: isMobile ? 1 : 2,
+    py: isMobile ? 0.5 : 1,
+    fontSize: isMobile ? "0.8rem" : "1rem",
     borderRadius: 2,
-    ...("fontWeight" in config && { fontWeight: config.fontWeight }),
+    minWidth: isMobile ? "40px" : "auto",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: config.text ? 1 : 0,
     ...sx,
   };
 
   return (
     <Button
       variant={config.variant}
-      size="large"
+      size={isMobile ? "small" : "medium"}
       color={config.color === "default" ? undefined : config.color}
       {...(config.iconPosition === "start"
         ? { startIcon: config.icon }

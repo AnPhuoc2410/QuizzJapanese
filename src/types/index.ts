@@ -69,3 +69,7 @@ export type Word = {
   hiragana: string;
   meaning: string;
 };
+
+export type WrongModel = {
+  status: "none" | "review" | "practice";
+};

@@ -15,6 +15,7 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import { useNavigate } from "react-router";
+import ShuffleIcon from '@mui/icons-material/Shuffle';
 
 const Starter = () => {
   const [open, setOpen] = useState(false); // State to handle dialog
@@ -91,9 +92,10 @@ const Starter = () => {
             margin: 1,
             padding: "0.8rem 2rem",
             fontSize: "1rem",
-            backgroundColor: "#f57c00", // Custom color for better contrast
+            backgroundColor: "#f57c00",
             "&:hover": { backgroundColor: "#ef6c00" },
           }}
+          startIcon={<ShuffleIcon />}
           onClick={() => navigate("/home", { state: { isShuffle: true } })}
         >
           Trộn thẻ

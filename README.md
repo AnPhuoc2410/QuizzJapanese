@@ -71,4 +71,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <a href="https://github.com/AnPhuoc2410/QuizzJapanese/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=AnPhuoc2410/QuizzJapanese" />
 </a>
-

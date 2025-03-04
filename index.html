@@ -1,14 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="/manifest.json" />
-    <link rel="icon" type="image/png" href="/icon/japan_72.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Japanese Kanji Quiz</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="/manifest.json" />
+  <link rel="icon" type="image/png" href="/icon/japan_72.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Japanese Kanji Quiz</title>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-T4SQQBP2P7"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-T4SQQBP2P7');
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>
