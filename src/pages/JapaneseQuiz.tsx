@@ -69,7 +69,11 @@ const JapaneseQuiz: React.FC = () => {
 
   //shuffle setting
   const location = useLocation();
-  const { isShuffle } = location.state || { shuffle: false }; // Default to false if no state is passed
+  const {
+    numberRange = 1,
+    isShuffle = false,
+    isShuffleCustom = false,
+  } = location.state || {};
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
     queryKey: ["words", ENV.API_SHEET_URL],
@@ -78,13 +82,25 @@ const JapaneseQuiz: React.FC = () => {
 
   useEffect(() => {
     if (data && data.length > 0) {
-      const wordsToUse = [...data];
-      if (isShuffle) {
+      let wordsToUse = [...data];
+
+      // Define the array ranges based on numberRange value
+      if (numberRange === 1) {
+        wordsToUse = wordsToUse.slice(0, 150);
+      } else if (numberRange === 2) {
+        wordsToUse = wordsToUse.slice(150, 300);
+      } else if (numberRange === 3) {
+        wordsToUse = wordsToUse.slice(300, 451);
+      }
+
+      // Shuffle if isShuffle or isShuffleCustom is true
+      if (isShuffle || isShuffleCustom) {
         shuffle(wordsToUse);
       }
+
       setWords(wordsToUse);
     }
-  }, [data, isShuffle]);
+  }, [data, numberRange, isShuffle, isShuffleCustom, setWords, shuffle]);
 
   // Handle timer logic
   useEffect(() => {
