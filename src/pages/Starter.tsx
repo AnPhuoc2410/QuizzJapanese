@@ -15,12 +15,13 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import { useNavigate } from "react-router";
-import ShuffleIcon from '@mui/icons-material/Shuffle';
+import ShuffleIcon from "@mui/icons-material/Shuffle";
 
 const Starter = () => {
   const [open, setOpen] = useState(false); // State to handle dialog
   const [numberRange, setNumberRange] = useState(1); // State to handle selected number range
   const [isShuffleCustom, setIsShuffleCustom] = useState(false); // State to handle shuffle option
+  const [autoNext, setAutoNext] = useState(false);
   const navigate = useNavigate();
 
   const handleClickOpen = () => {
@@ -33,7 +34,7 @@ const Starter = () => {
 
   const handleConfirm = () => {
     // Navigate to next page with the chosen settings
-    navigate("/home", { state: { numberRange, isShuffleCustom } });
+    navigate("/home", { state: { numberRange, isShuffleCustom, autoNext } });
     setOpen(false);
   };
 
@@ -158,6 +159,17 @@ const Starter = () => {
               />
             }
             label="Trộn thẻ"
+            sx={{ mt: 2 }}
+          />
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={autoNext}
+                onChange={(e) => setAutoNext(e.target.checked)}
+              />
+            }
+            label="Chuyển thẻ tự động　(đáp án đúng)"
             sx={{ mt: 2 }}
           />
         </DialogContent>

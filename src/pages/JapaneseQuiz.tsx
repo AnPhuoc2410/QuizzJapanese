@@ -63,6 +63,7 @@ const JapaneseQuiz: React.FC = () => {
     wrongWords: [],
   };
 
+  const [countdown, setCountdown] = useState<number | null>(null);
   const [state, dispatch] = useReducer(quizReducer, initialState);
   const [words, setWords] = useState<Word[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -90,6 +91,7 @@ const JapaneseQuiz: React.FC = () => {
     numberRange = 1,
     isShuffle = false,
     isShuffleCustom = false,
+    autoNext = false,
   } = location.state || {};
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
@@ -154,11 +156,11 @@ const JapaneseQuiz: React.FC = () => {
     if (state.showingAnswer) {
       let counter = state.reviewTime;
       dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: counter });
-      
+
       reviewTimerRef.current = setInterval(() => {
         counter -= 1;
         dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: counter });
-        
+
         if (counter <= 0) {
           clearInterval(reviewTimerRef.current as NodeJS.Timeout);
           dispatch({ type: "SET_SHOWING_ANSWER", payload: false });
@@ -249,26 +251,6 @@ const JapaneseQuiz: React.FC = () => {
     });
   }, []);
 
-  const checkAnswer = useCallback(() => {
-    if (!words || words.length === 0) return;
-    answerChecked.current = true;
-    dispatch({ type: "SET_TIMER_ACTIVE", payload: false });
-    const currentWord = words[state.index];
-    if (!currentWord) return;
-
-    if (state.input.trim() === currentWord.hiragana) {
-      dispatch({ type: "SET_MESSAGE", payload: "✅ Đúng!" });
-    } else {
-      dispatch({
-        type: "SET_MESSAGE",
-        payload: `❌ Sai! Đáp án: ${currentWord.hiragana}`,
-      });
-      dispatch({ type: "ADD_WRONG_WORD", payload: currentWord });
-    }
-    dispatch({ type: "SET_MEANING", payload: currentWord.meaning });
-    fetchKanjiDetails(currentWord.kanji);
-  }, [words, state.index, state.input, fetchKanjiDetails]);
-
   const nextWord = useCallback(() => {
     if (!words || words.length === 0) return;
     answerChecked.current = false;
@@ -278,6 +260,39 @@ const JapaneseQuiz: React.FC = () => {
       dispatch({ type: "SET_TIMER_PAUSED", payload: false });
     }
   }, [words, state.timerEnabled]);
+
+  const checkAnswer = useCallback(() => {
+    if (!words || words.length === 0) return;
+    answerChecked.current = true;
+    dispatch({ type: "SET_TIMER_ACTIVE", payload: false });
+    const currentWord = words[state.index];
+    if (!currentWord) return;
+
+    if (state.input.trim() === currentWord.hiragana) {
+      dispatch({ type: "SET_MESSAGE", payload: "✅ Đúng!" });
+      if (autoNext) {
+        setCountdown(2); // Start countdown from 2 seconds
+        const countdownInterval = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev === 1) {
+              clearInterval(countdownInterval);
+              nextWord();
+              return null;
+            }
+            return prev! - 1;
+          });
+        }, 1000);
+      }
+    } else {
+      dispatch({
+        type: "SET_MESSAGE",
+        payload: `❌ Sai! Đáp án: ${currentWord.hiragana}`,
+      });
+      dispatch({ type: "ADD_WRONG_WORD", payload: currentWord });
+    }
+    dispatch({ type: "SET_MEANING", payload: currentWord.meaning });
+    fetchKanjiDetails(currentWord.kanji);
+  }, [words, state.index, state.input, fetchKanjiDetails, nextWord]);
 
   const prevWord = useCallback(() => {
     if (!words || words.length === 0) return;
@@ -551,6 +566,22 @@ const JapaneseQuiz: React.FC = () => {
                 </>
               )}
             </Box>
+          )}
+
+          {countdown !== null && (
+            <Typography
+              variant="h6"
+              color="primary"
+              sx={{
+                textAlign: "center",
+                marginBottom: isMobile ? 2 : 1,
+                height: 40,
+                fontWeight: "bold",
+                fontSize: isMobile ? "1rem" : "1.5rem",
+              }}
+            >
+              Chuyển sang câu hỏi tiếp theo trong {countdown} giây...
+            </Typography>
           )}
 
           <CardContent sx={{ p: isMobile ? 2 : 4 }}>
