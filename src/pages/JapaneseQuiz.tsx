@@ -154,11 +154,11 @@ const JapaneseQuiz: React.FC = () => {
     if (state.showingAnswer) {
       let counter = state.reviewTime;
       dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: counter });
-      
+
       reviewTimerRef.current = setInterval(() => {
         counter -= 1;
         dispatch({ type: "SET_REVIEW_COUNTDOWN", payload: counter });
-        
+
         if (counter <= 0) {
           clearInterval(reviewTimerRef.current as NodeJS.Timeout);
           dispatch({ type: "SET_SHOWING_ANSWER", payload: false });
@@ -576,7 +576,7 @@ const JapaneseQuiz: React.FC = () => {
                 variant="h1"
                 sx={{
                   textAlign: "center",
-                  fontSize: isMobile ? "clamp(1.5rem, 5vw, 2.5rem)" : "7rem",
+                  fontSize: isMobile ? "4rem" : "7rem",
                   lineHeight: 1.2,
                   mb: isMobile ? 2 : 3,
                 }}
@@ -641,6 +641,7 @@ const JapaneseQuiz: React.FC = () => {
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 1,
+                height: { xs: 56, sm: 64 },
                 // flexDirection: isMobile ? "column" : "row",
               }}
             >

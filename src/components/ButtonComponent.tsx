@@ -60,9 +60,9 @@ const NavigationButton: React.FC<NavigationButtonProps> = ({
   const commonSx: SxProps<Theme> = {
     px: isMobile ? 1 : 2,
     py: isMobile ? 0.5 : 1,
-    fontSize: isMobile ? "0.8rem" : "1rem",
+    fontSize: isMobile ? "1rem" : "1rem",
     borderRadius: 2,
-    minWidth: isMobile ? "40px" : "auto",
+    minWidth: isMobile ? "60px" : "auto",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
