@@ -7,9 +7,15 @@ interface WrongWordsModalProps {
   open: boolean;
   onClose: () => void;
   wrongWords: Word[];
+  onStartPractice?: () => void;
 }
 
-const WrongWordsModal: React.FC<WrongWordsModalProps> = ({ open, onClose, wrongWords }) => {
+const WrongWordsModal: React.FC<WrongWordsModalProps> = ({ 
+  open, 
+  onClose, 
+  wrongWords,
+  onStartPractice 
+}) => {
   return (
     <Modal open={open} onClose={onClose}>
       <Box
@@ -56,9 +62,27 @@ const WrongWordsModal: React.FC<WrongWordsModalProps> = ({ open, onClose, wrongW
             ))}
           </List>
         )}
-        <Button onClick={onClose} sx={{ mt: 2 }} fullWidth variant="contained">
-          Đóng
-        </Button>
+        <Box sx={{ mt: 2, display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+          {wrongWords.length > 0 && (
+            <Button 
+              onClick={onStartPractice} 
+              variant="contained" 
+              color="secondary" 
+              fullWidth={true}
+              sx={{ flex: 1 }}
+            >
+              Luyện Tập Từ Sai
+            </Button>
+          )}
+          <Button 
+            onClick={onClose} 
+            variant="contained" 
+            fullWidth
+            sx={{ flex: 1 }}
+          >
+            Đóng
+          </Button>
+        </Box>
       </Box>
     </Modal>
   );

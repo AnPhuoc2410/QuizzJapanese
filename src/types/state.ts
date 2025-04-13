@@ -1,7 +1,6 @@
 import { SETTINGS } from "../settings";
 import { Example, Word } from "../types";
 
-
 export interface QuizState {
     index: number;
     input: string;
@@ -25,6 +24,7 @@ export interface QuizState {
 type QuizAction =
     | { type: "NEXT_WORD"; payload: number } // payload: total words count
     | { type: "PREV_WORD"; payload: number }
+    | { type: "SET_INDEX"; payload: number } // New action to set index directly
     | { type: "SET_INPUT"; payload: string }
     | { type: "SET_MESSAGE"; payload: string }
     | { type: "SET_MEANING"; payload: string | null }
@@ -69,6 +69,21 @@ export function quizReducer(state: QuizState, action: QuizAction): QuizState {
             return {
                 ...state,
                 index: (state.index - 1 + action.payload) % action.payload,
+                input: "",
+                message: "",
+                meaning: null,
+                onyomi: "",
+                kunyomi: "",
+                kanjiAnimation: [],
+                kanjiVideo: null,
+                example: null,
+                timeLeft: SETTINGS.COUNTDOWN_TIME_LEFT,
+                showingAnswer: false,
+            };
+        case "SET_INDEX":
+            return {
+                ...state,
+                index: action.payload,
                 input: "",
                 message: "",
                 meaning: null,
