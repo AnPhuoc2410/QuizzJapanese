@@ -17,7 +17,12 @@ const WrongWordsModal: React.FC<WrongWordsModalProps> = ({
   onStartPractice 
 }) => {
   return (
-    <Modal open={open} onClose={onClose}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      aria-labelledby="wrong-words-modal-title"
+      aria-describedby="wrong-words-modal-description"
+    >
       <Box
         sx={{
           position: "absolute",
@@ -32,8 +37,11 @@ const WrongWordsModal: React.FC<WrongWordsModalProps> = ({
           borderRadius: 2,
         }}
       >
-        <Typography variant="h6" gutterBottom>
+        <Typography id="wrong-words-modal-title" variant="h6" gutterBottom>
           Từ Sai
+        </Typography>
+        <Typography id="wrong-words-modal-description" sx={{ display: "none" }}>
+          Danh sách các từ sai trong bài kiểm tra.
         </Typography>
         {wrongWords.length === 0 ? (
           <Typography>Chưa có từ sai!</Typography>

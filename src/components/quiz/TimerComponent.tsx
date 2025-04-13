@@ -50,6 +50,7 @@ const TimerComponent: React.FC<TimerComponentProps> = ({
         <FormControlLabel
           control={
             <Switch
+              aria-label="Enable or disable timer"
               checked={timerEnabled}
               onChange={onToggleTimer}
               color="primary"

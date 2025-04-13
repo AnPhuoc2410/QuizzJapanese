@@ -81,10 +81,12 @@ const JapaneseQuiz: React.FC = () => {
     autoNext = false,
   } = location.state || {};
 
-  // Fetch words data
+  // Optimize API call by adding staleTime and gcTime
   const { data, isLoading, isError, error, isFetching } = useQuery({
     queryKey: ["words", ENV.API_SHEET_URL],
     queryFn: fetchListWordInSheet,
+    staleTime: 1000 * 60 * 10, // Cache data for 10 minutes
+    gcTime: 1000 * 60 * 30, // Keep data in cache for 30 minutes
   });
 
   // Process words data

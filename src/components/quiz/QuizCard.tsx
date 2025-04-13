@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Box, TextField, Typography } from '@mui/material';
 import KanjiDetails from '../KanjiDetails';
 import NavigationButton from '../ButtonComponent';
@@ -170,4 +170,4 @@ const QuizCard: React.FC<QuizCardProps> = ({
   );
 };
 
-export default QuizCard;
+export default memo(QuizCard);
