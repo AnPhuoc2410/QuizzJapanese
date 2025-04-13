@@ -22,6 +22,7 @@ const Starter = () => {
   const [numberRange, setNumberRange] = useState(1); // State to handle selected number range
   const [isShuffleCustom, setIsShuffleCustom] = useState(false); // State to handle shuffle option
   const [autoNext, setAutoNext] = useState(false);
+  const [openJLPTDialog, setOpenJLPTDialog] = useState(false); // State for JLPTKanji dialog
   const navigate = useNavigate();
 
   const handleClickOpen = () => {
@@ -36,6 +37,19 @@ const Starter = () => {
     // Navigate to next page with the chosen settings
     navigate("/home", { state: { numberRange, isShuffleCustom, autoNext } });
     setOpen(false);
+  };
+
+  const handleOpenJLPTDialog = () => {
+    setOpenJLPTDialog(true);
+  };
+
+  const handleCloseJLPTDialog = () => {
+    setOpenJLPTDialog(false);
+  };
+
+  const handleConfirmJLPT = () => {
+    navigate("/vocabulary");
+    setOpenJLPTDialog(false);
   };
 
   return (
@@ -132,6 +146,22 @@ const Starter = () => {
             Custom
           </Button>
         </Box>
+        <Box>
+          <Button
+            variant="outlined"
+            size="large"
+            sx={{
+              margin: 1,
+              padding: "0.8rem 2rem",
+              fontSize: "1rem",
+              backgroundColor: "#4CAF50", // Custom color for JLPTKanji
+              color: "#FFFFFF",
+            }}
+            onClick={handleOpenJLPTDialog}
+          >
+            JLPT Kanji
+          </Button>
+        </Box>
       </Box>
 
       {/* Dialog for Custom Options */}
@@ -176,6 +206,20 @@ const Starter = () => {
         <DialogActions>
           <Button onClick={handleClose}>Hủy</Button>
           <Button onClick={handleConfirm} variant="contained">
+            Xác nhận
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog for JLPT Kanji */}
+      <Dialog open={openJLPTDialog} onClose={handleCloseJLPTDialog}>
+        <DialogTitle>Xác nhận</DialogTitle>
+        <DialogContent>
+          <Typography>Bạn có chắc chắn muốn chuyển đến trang JLPT Kanji không?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseJLPTDialog}>Hủy</Button>
+          <Button onClick={handleConfirmJLPT} variant="contained">
             Xác nhận
           </Button>
         </DialogActions>

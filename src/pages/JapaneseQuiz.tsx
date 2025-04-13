@@ -1,14 +1,4 @@
-import React, {
-  useEffect,
-  useReducer,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
-import { useLocation } from "react-router";
-import { useQuery } from "@tanstack/react-query";
 import {
-  Box,
   CardContent,
   CircularProgress,
   Container,
@@ -16,19 +6,28 @@ import {
   SelectChangeEvent,
   Typography,
   useMediaQuery,
-  useTheme,
+  useTheme
 } from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
+import React, {
+  useCallback,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
+import { useLocation } from "react-router";
 
-import QuizHeader from "../components/quiz/QuizHeader";
 import QuizCard from "../components/quiz/QuizCard";
+import QuizHeader from "../components/quiz/QuizHeader";
 import TimerComponent from "../components/quiz/TimerComponent";
 import WrongWordsModal from "../components/WrongWordsModal";
 
 import { ENV } from "../envs";
 import { SETTINGS } from "../settings";
 import { KanjiData, Word, WrongModel } from "../types";
-import { shuffle, fetchKanji, fetchListWordInSheet } from "../utils";
 import { quizReducer, QuizState } from "../types/state";
+import { fetchKanji, fetchListWordInSheet, shuffle } from "../utils";
 
 const JapaneseQuiz: React.FC = () => {
   const initialState: QuizState = {
@@ -455,7 +454,6 @@ const JapaneseQuiz: React.FC = () => {
           onTogglePause={togglePause}
           onReviewTimeChange={handleReviewTimeChange}
         />
-
         {/* Main Quiz Card */}
         <CardContent sx={{ p: isMobile ? 2 : 4 }}>
           <QuizCard
